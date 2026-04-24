@@ -1,0 +1,47 @@
+# Dependencies and package manager caches
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Build outputs and caches
+dist/
+build/
+.next/
+.turbo/
+.cache/
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# Taro / Mini Program
+miniprogram_npm/
+project.private.config.json
+
+# Runtime files
+logs/
+*.log
+tmp/
+temp/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Go
+bin/
+*.test
+coverage.out
+
+# Editors and OS files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.idea/
+.DS_Store
+Thumbs.db
