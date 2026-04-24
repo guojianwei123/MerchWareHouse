@@ -5,17 +5,32 @@ const ingestionService = new IngestionService();
 
 export const uploadImage = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { imgUrl } = req.body;
+    const imageUrl = req.body.imageUrl ?? req.body.imgUrl;
 
-    if (!imgUrl) {
-      return res.status(400).json({ error: 'imgUrl is required' });
+    if (typeof imageUrl !== 'string') {
+      return res.status(400).json({
+        data: null,
+        error: { message: 'imageUrl is required' },
+        code: 'VALIDATION_ERROR',
+      });
     }
 
-    const result = await ingestionService.processScreenshot(imgUrl);
+    try {
+      new URL(imageUrl);
+    } catch {
+      return res.status(400).json({
+        data: null,
+        error: { message: 'imageUrl must be a valid URL' },
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
+    const result = await ingestionService.processScreenshot(imageUrl);
 
     res.status(200).json({
-      message: 'Image processed successfully',
-      data: result
+      data: result,
+      error: null,
+      code: 'OK',
     });
   } catch (error) {
     next(error);

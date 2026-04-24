@@ -1,0 +1,70 @@
+{
+  "aqua-opera": {
+    "description": "水蓝剧场风，默认主题",
+    "tokens": {
+      "--color-bg": "#edf8fb",
+      "--color-surface": "#fffefe",
+      "--color-surface-soft": "#dff4f8",
+      "--color-primary": "#63c7dc",
+      "--color-primary-strong": "#247ca2",
+      "--color-text": "#243f52",
+      "--color-muted": "#6f8b9a",
+      "--color-line": "#b8dce6",
+      "--radius-card": "26px",
+      "--radius-pill": "999px",
+      "--shadow-card": "0 16px 36px rgba(37, 99, 125, 0.16)",
+      "--texture-opacity": "0.18"
+    }
+  },
+  "cream-desk": {
+    "description": "奶油手账风，默认主题",
+    "tokens": {
+      "--color-bg": "#fffaf2",
+      "--color-surface": "#fffdf8",
+      "--color-surface-soft": "#fff3d9",
+      "--color-primary": "#f5bd4f",
+      "--color-primary-strong": "#d88918",
+      "--color-text": "#4b321f",
+      "--color-muted": "#9a8064",
+      "--color-line": "#ead9bd",
+      "--radius-card": "24px",
+      "--radius-pill": "999px",
+      "--shadow-card": "0 12px 30px rgba(99, 71, 38, 0.12)",
+      "--texture-opacity": "0.18"
+    }
+  },
+  "mint-cabinet": {
+    "description": "薄荷收纳柜，偏清爽",
+    "tokens": {
+      "--color-bg": "#f5fbf5",
+      "--color-surface": "#ffffff",
+      "--color-surface-soft": "#dff1df",
+      "--color-primary": "#8bc9a8",
+      "--color-primary-strong": "#4f9a73",
+      "--color-text": "#314334",
+      "--color-muted": "#71806f",
+      "--color-line": "#cfe3cf",
+      "--radius-card": "22px",
+      "--radius-pill": "999px",
+      "--shadow-card": "0 12px 28px rgba(58, 105, 76, 0.12)",
+      "--texture-opacity": "0.14"
+    }
+  },
+  "pink-ticket": {
+    "description": "粉色小票/贴纸，偏可爱",
+    "tokens": {
+      "--color-bg": "#fff8fa",
+      "--color-surface": "#fffdfd",
+      "--color-surface-soft": "#ffe5ee",
+      "--color-primary": "#f5a9bf",
+      "--color-primary-strong": "#d96f91",
+      "--color-text": "#56303d",
+      "--color-muted": "#9b7580",
+      "--color-line": "#efd0d9",
+      "--radius-card": "26px",
+      "--radius-pill": "999px",
+      "--shadow-card": "0 12px 30px rgba(133, 72, 91, 0.12)",
+      "--texture-opacity": "0.16"
+    }
+  }
+}
