@@ -1,25 +1,22 @@
-export class VisionAdapter {
-  /**
-   * Extracts Guzi information from an image using a multimodal LLM.
-   *
-   * @param imageUrl The URL of the image to process.
-   * @returns A JSON string containing the extracted information.
-   */
-  async extractGuziInfo(imageUrl: string): Promise<string> {
-    // Placeholder implementation for multimodal LLM HTTP request
-    console.log(`Extracting info from image: ${imageUrl}`);
+import type { GuziItem } from '../../types/models/guzi.schema';
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+export interface VisionAdapter {
+  extractGuziInfo(imageUrl: string): Promise<unknown>;
+}
 
-    // Return a mock JSON string matching the expected structure
-    return JSON.stringify({
-      name: "Mock Guzi Item",
-      type: "Badge",
-      ip: "Mock IP",
-      character: "Mock Character",
-      acquisitionPrice: 50.0,
-      diameter: 58
-    });
+export class MockVisionAdapter implements VisionAdapter {
+  async extractGuziInfo(imageUrl: string): Promise<GuziItem> {
+    return {
+      id: `guzi_${Date.now()}`,
+      name: 'Mock Badge',
+      type: 'badge',
+      ip: 'Mock IP',
+      character: 'Mock Character',
+      series: 'Mock Series',
+      imageUrl,
+      purchasePrice: 50,
+      diameter: 58,
+      shape: 'round',
+    };
   }
 }

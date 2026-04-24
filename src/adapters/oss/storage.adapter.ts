@@ -1,18 +1,20 @@
+import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { extname, join } from 'node:path';
+
 export class StorageAdapter {
-  /**
-   * Uploads an image buffer to OSS/S3 and returns the URL.
-   *
-   * @param fileBuffer The image buffer to upload.
-   * @returns The public URL of the uploaded image.
-   */
-  async uploadImage(fileBuffer: Buffer): Promise<string> {
-    // Placeholder implementation for OSS/S3 upload
-    console.log(`Uploading image of size: ${fileBuffer.length} bytes`);
+  constructor(
+    private readonly uploadDir = process.env.UPLOAD_DIR ?? './uploads',
+    private readonly publicBaseUrl = process.env.PUBLIC_UPLOAD_BASE_URL ?? '/uploads',
+  ) {}
 
-    // Simulate upload delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+  async uploadImage(fileBuffer: Buffer, originalName = 'image.jpg'): Promise<string> {
+    await mkdir(this.uploadDir, { recursive: true });
 
-    // Return a mock URL
-    return `https://mock-storage.example.com/images/${Date.now()}.jpg`;
+    const extension = extname(originalName) || '.jpg';
+    const filename = `${randomUUID()}${extension}`;
+    await writeFile(join(this.uploadDir, filename), fileBuffer);
+
+    return `${this.publicBaseUrl.replace(/\/$/, '')}/${filename}`;
   }
 }

@@ -1,13 +1,19 @@
+import { MockVisionAdapter, type VisionAdapter } from '../adapters/llm/vision.adapter';
+import { GuziUnionSchema, type GuziItem } from '../types/models/guzi.schema';
+
 export class IngestionService {
-  async processScreenshot(screenshotUrl: string): Promise<any> {
-    return { extractedData: 'placeholder' };
+  constructor(private readonly visionAdapter: VisionAdapter = new MockVisionAdapter()) {}
+
+  async processScreenshot(screenshotUrl: string): Promise<GuziItem> {
+    const extracted = await this.visionAdapter.extractGuziInfo(screenshotUrl);
+    return this.createDraftItem(extracted);
   }
 
-  async validateExtractedJson(data: any): Promise<boolean> {
-    return true;
+  async validateExtractedJson(data: unknown): Promise<GuziItem> {
+    return GuziUnionSchema.parse(data);
   }
 
-  async createDraftItem(data: any): Promise<any> {
-    return { draftId: 'draft-123' };
+  async createDraftItem(data: unknown): Promise<GuziItem> {
+    return this.validateExtractedJson(data);
   }
 }

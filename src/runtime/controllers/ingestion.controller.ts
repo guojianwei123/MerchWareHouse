@@ -1,11 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
+import { IngestionService } from '../../service/ingestion.service';
 
-// Mock ingestion service for now
-const ingestionService = {
-  processScreenshot: async (imgUrl: string) => {
-    return { data: 'mock data' };
-  }
-};
+const ingestionService = new IngestionService();
 
 export const uploadImage = async (req: Request, res: Response, next: NextFunction) => {
   try {

@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model GuziItem {
+  id            String        @id
+  name          String
+  type          String
+  ip            String
+  character     String
+  series        String
+  imageUrl      String
+  officialPrice Float?
+  purchasePrice Float?
+  marketPrice   Float?
+  details       Json
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  priceRecords  PriceRecord[]
+}
+
+model PriceRecord {
+  id            String   @id
+  guziId        String
+  date          DateTime
+  officialPrice Float?
+  purchasePrice Float?
+  marketPrice   Float?
+  createdAt     DateTime @default(now())
+  guzi          GuziItem @relation(fields: [guziId], references: [id], onDelete: Cascade)
+
+  @@index([guziId])
+}
+
+model SpatialNode {
+  id        String   @id
+  nodeType  String
+  parentId  String?
+  guziId    String?
+  x         Float
+  y         Float
+  z         Float?
+  width     Float
+  height    Float
+  depth     Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([guziId])
+}
+
+model Showcase {
+  id        String   @id
+  title     String
+  ownerId   String
+  isPublic  Boolean  @default(false)
+  nodes     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

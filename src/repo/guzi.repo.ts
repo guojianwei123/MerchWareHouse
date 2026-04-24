@@ -1,32 +1,42 @@
-// Placeholder type for GuziItem
-export interface GuziItem {
-  id?: string;
-  name: string;
-  type: string;
-  ip?: string;
-  character?: string;
-  acquisitionPrice?: number;
-  [key: string]: any;
-}
+import type { GuziFilter, GuziItem } from '../types/models/guzi.schema';
 
 export class GuziRepository {
-  /**
-   * Persists a GuziItem to the database.
-   *
-   * @param item The GuziItem to save.
-   * @returns The saved item with generated ID if applicable.
-   */
+  private readonly items = new Map<string, GuziItem>();
+
   async saveItem(item: GuziItem): Promise<GuziItem> {
-    // Placeholder implementation for PostgreSQL persistence
-    console.log(`Saving item to database: ${item.name}`);
+    this.items.set(item.id, item);
+    return item;
+  }
 
-    // Simulate DB operation delay
-    await new Promise(resolve => setTimeout(resolve, 200));
+  async updateItem(id: string, item: GuziItem): Promise<GuziItem | null> {
+    if (!this.items.has(id)) {
+      return null;
+    }
 
-    // Return the item with a mock ID if it doesn't have one
-    return {
-      ...item,
-      id: item.id || `guzi_${Date.now()}`
-    };
+    this.items.set(id, item);
+    return item;
+  }
+
+  async deleteItem(id: string): Promise<boolean> {
+    return this.items.delete(id);
+  }
+
+  async findById(id: string): Promise<GuziItem | null> {
+    return this.items.get(id) ?? null;
+  }
+
+  async listItems(filter: GuziFilter = {}): Promise<GuziItem[]> {
+    return Array.from(this.items.values()).filter((item) => {
+      return (
+        (!filter.ip || item.ip === filter.ip) &&
+        (!filter.character || item.character === filter.character) &&
+        (!filter.series || item.series === filter.series) &&
+        (!filter.type || item.type === filter.type)
+      );
+    });
+  }
+
+  clear(): void {
+    this.items.clear();
   }
 }
