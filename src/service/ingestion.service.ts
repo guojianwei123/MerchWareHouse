@@ -1,5 +1,6 @@
 import { createVisionAdapterFromEnv, type VisionAdapter } from '../adapters/llm/vision.adapter';
 import { GUZI_EXTRACTION_PROMPT } from '../config/ai-prompts';
+import { isSupportedImageDataUrl } from '../types/models/local-image.schema';
 import { GuziUnionSchema, type GuziItem } from '../types/models/guzi.schema';
 
 export class IngestionService {
@@ -30,10 +31,20 @@ export class IngestionService {
   }
 
   private parseImageUrl(imageUrl: string): string {
+    if (isSupportedImageDataUrl(imageUrl)) {
+      return imageUrl;
+    }
+
     try {
-      return new URL(imageUrl).toString();
+      const url = new URL(imageUrl);
+
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        throw new Error('imageUrl must be an http(s) URL or image data URL');
+      }
+
+      return url.toString();
     } catch {
-      throw new Error('imageUrl must be a valid URL');
+      throw new Error('imageUrl must be an http(s) URL or image data URL');
     }
   }
 

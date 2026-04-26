@@ -4,11 +4,11 @@
 根据 `ARCHITECTURE.md` 和 `docs/product-specs/feature-guzi-categories.md`，在 `src/types/models/` 中建立支持七大分类的谷子多态类型，并配合 Zod 实现后端第一层数据校验。
 
 ## 验收标准
-- [ ] 完成 `src/types/models/guzi.schema.ts`，使用 Zod discriminated union 定义 `PaperCard`、`Acrylic`、`Badge`、`Fabric`、`Figure`、`Practical`、`Special`。
-- [ ] `BaseGuziSchema` 包含 `id`、`name`、`ip`、`character`、`series`、`imageUrl` 和基础价格字段。
-- [ ] 七大分类包含需求文档规定的核心字段和单位，例如 `PaperCard.length/width`、`Badge.diameter/shape`、`Acrylic.height/hasBase`。
-- [ ] 完成 `src/types/models/transaction.schema.ts` 的 `PriceRecordSchema`，覆盖官方发售价、购入价、当前市场价和记录日期。
-- [ ] 通过 `z.infer<>` 导出 `GuziItem`、`PriceRecord` 等 TS 类型，供 `src/service/`、`src/repo/`、前端状态使用。
+- [x] 完成 `src/types/models/guzi.schema.ts`，使用 Zod discriminated union 定义 `PaperCard`、`Acrylic`、`Badge`、`Fabric`、`Figure`、`Practical`、`Special`。
+- [x] `BaseGuziSchema` 包含 `id`、`name`、`ip`、`character`、`series`、`imageUrl` 和基础价格字段。
+- [x] 七大分类包含需求文档规定的核心字段和单位，例如 `PaperCard.length/width`、`Badge.diameter/shape`、`Acrylic.height/hasBase`。
+- [x] 完成 `src/types/models/transaction.schema.ts` 的 `PriceRecordSchema`，覆盖官方发售价、购入价、当前市场价和记录日期。
+- [x] 通过 `z.infer<>` 导出 `GuziItem`、`PriceRecord` 等 TS 类型，供 `src/service/`、`src/repo/`、前端状态使用。
 
 ## 边界
 - 暂不绑定具体 ORM 或数据库迁移。

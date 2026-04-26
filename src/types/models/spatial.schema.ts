@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ImageSourceSchema } from './guzi.schema';
 
 const DimensionSchema = z.number().positive();
 
@@ -54,7 +55,7 @@ export const ShowcasePublicItemSchema = z.object({
   character: z.string().min(1),
   series: z.string().min(1),
   type: z.string().min(1),
-  imageUrl: z.string().url(),
+  imageUrl: ImageSourceSchema,
 });
 
 export const ShowcasePublicViewSchema = z.object({

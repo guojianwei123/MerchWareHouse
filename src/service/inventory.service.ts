@@ -1,4 +1,4 @@
-import { GuziRepository } from '../repo/guzi.repo';
+import { GuziRepository, type GuziRepositoryPort } from '../repo/guzi.repo';
 import {
   GuziFilterSchema,
   GuziUnionSchema,
@@ -7,7 +7,7 @@ import {
 } from '../types/models/guzi.schema';
 
 export class InventoryService {
-  constructor(private readonly repository = new GuziRepository()) {}
+  constructor(private readonly repository: GuziRepositoryPort = new GuziRepository()) {}
 
   async createItem(input: unknown): Promise<GuziItem> {
     const item = GuziUnionSchema.parse(input);

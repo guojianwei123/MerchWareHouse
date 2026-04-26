@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "api:dev": "tsx src/runtime/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -29,6 +30,7 @@
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "prisma": "^6.3.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vite": "^6.0.11",
     "vitest": "^3.0.5"

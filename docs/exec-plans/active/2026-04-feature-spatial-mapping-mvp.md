@@ -4,11 +4,11 @@
 实现 2D/3D 空间结构的逻辑计算、展示柜树状容器模型，以及基于谷子物理尺寸的基础配件推荐。
 
 ## 验收标准
-- [ ] 完成 `src/types/models/spatial.schema.ts`，定义支持 `x`、`y`、`z`、`width`、`height`、`depth` 的空间节点。
-- [ ] 空间节点支持树状容器关系，用于表达房间、柜子、格子、谷子摆放项。
-- [ ] 编写 `src/service/spatial.service.ts`，提供 AABB 碰撞检测和容器容量校验。
-- [ ] 编写 `src/service/accessory.service.ts`，根据分类与尺寸返回推荐配件，例如 63x88 mm 纸制卡推荐 65x90 mm 自封袋。
-- [ ] 配件推荐返回结构包含配件类型、推荐尺寸、适配原因。
+- [x] 完成 `src/types/models/spatial.schema.ts`，定义支持 `x`、`y`、`z`、`width`、`height`、`depth` 的空间节点。
+- [x] 空间节点支持树状容器关系，用于表达房间、柜子、格子、谷子摆放项。
+- [x] 编写 `src/service/spatial.service.ts`，提供 AABB 碰撞检测和容器容量校验。
+- [x] 编写 `src/service/accessory.service.ts`，根据分类与尺寸返回推荐配件，例如 63x88 mm 纸制卡推荐 65x90 mm 自封袋。
+- [x] 配件推荐返回结构包含配件类型、推荐尺寸、适配原因。
 
 ## 边界
 - 暂不实现复杂 3D 渲染和 Canvas 性能优化。

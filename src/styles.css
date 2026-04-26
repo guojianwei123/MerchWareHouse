@@ -87,6 +87,40 @@ img {
   --shadow-card: 0 16px 36px rgba(37, 99, 125, 0.16);
 }
 
+.theme-cream-desk {
+  --color-bg: #fff8ea;
+  --color-surface: #fffdf7;
+  --color-surface-soft: #f8e8c6;
+  --color-primary: #d9a94f;
+  --color-primary-strong: #9b6820;
+  --color-text: #493a26;
+  --color-muted: #8a7556;
+  --color-line: #e8cf9f;
+  --radius-card: 24px;
+  --radius-pill: 999px;
+  --shadow-card: 0 16px 34px rgba(127, 89, 32, 0.16);
+}
+
+.theme-mint-cabinet {
+  --color-bg: #eefbf4;
+  --color-surface: #fbfffd;
+  --color-surface-soft: #d8f4e5;
+  --color-primary: #6cc99e;
+  --color-primary-strong: #2f7c5e;
+  --color-text: #243f35;
+  --color-muted: #638575;
+  --color-line: #bce2cf;
+  --radius-card: 22px;
+  --radius-pill: 999px;
+  --shadow-card: 0 16px 34px rgba(40, 105, 78, 0.15);
+}
+
+.theme-ai {
+  --radius-card: 24px;
+  --radius-pill: 999px;
+  --shadow-card: 0 16px 34px rgba(45, 96, 120, 0.16);
+}
+
 .app-shell {
   min-height: 100vh;
   display: grid;
@@ -1026,6 +1060,34 @@ p {
   gap: 14px;
 }
 
+.manual-entry-page {
+  gap: 16px;
+}
+
+.upload-subpage-header {
+  display: grid;
+  grid-template-columns: 76px 1fr 76px;
+  align-items: center;
+  min-height: 48px;
+}
+
+.upload-subpage-header h1 {
+  grid-column: 2;
+  margin: 0;
+  color: #0f2f58;
+  font-size: 22px;
+  text-align: center;
+}
+
+.back-button {
+  justify-self: start;
+  border: 1px solid rgba(184, 220, 230, 0.9);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 8px 18px rgba(36, 124, 162, 0.08);
+  padding: 9px 16px;
+}
+
 .upload-page .ai-entry-card {
   grid-template-columns: 1fr;
   justify-items: center;
@@ -1077,6 +1139,15 @@ p {
   padding: 10px 36px;
 }
 
+.upload-collapse-toggle {
+  justify-self: center;
+  border: 1px solid rgba(184, 220, 230, 0.9);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 8px 18px rgba(36, 124, 162, 0.08);
+  padding: 10px 28px;
+}
+
 .entry-mode-grid button {
   display: grid;
   justify-items: center;
@@ -1110,6 +1181,10 @@ p {
   background: rgba(255, 255, 255, 0.86);
   box-shadow: var(--shadow-card);
   padding: 18px;
+}
+
+.manual-entry-panel {
+  align-content: start;
 }
 
 .form-grid {

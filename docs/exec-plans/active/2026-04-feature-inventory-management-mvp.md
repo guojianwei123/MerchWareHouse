@@ -4,11 +4,11 @@
 实现谷子库存的手动录入、AI 草稿确认入库、编辑、删除、列表和基础筛选。
 
 ## 验收标准
-- [ ] `src/repo/guzi.repo.ts` 使用 `GuziItem` 类型提供保存、更新、删除、查询接口。
-- [ ] `src/service/` 中提供库存管理服务，所有入库和更新数据先通过 `GuziUnionSchema.parse()` 校验。
-- [ ] `src/store/inventoryStore.ts` 管理 `draftItem` 和 `items`，支持确认草稿入库、更新和删除。
-- [ ] `src/pages/DraftReviewPage` 使用 `src/components/Forms/DynamicGuziForm` 根据七大分类渲染可编辑字段。
-- [ ] 库存列表支持按 IP、人物、系列、分类筛选。
+- [x] `src/repo/guzi.repo.ts` 使用 `GuziItem` 类型提供保存、更新、删除、查询接口。
+- [x] `src/service/` 中提供库存管理服务，所有入库和更新数据先通过 `GuziUnionSchema.parse()` 校验。
+- [x] `src/store/inventoryStore.ts` 管理 `draftItem` 和 `items`，支持确认草稿入库、更新和删除。
+- [x] `src/pages/DraftReviewPage` 使用 `src/components/Forms/DynamicGuziForm` 根据七大分类渲染可编辑字段。
+- [x] 库存列表支持按 IP、人物、系列、分类筛选。
 
 ## 边界
 - 不实现真实数据库迁移；可以先使用内存仓储或仓储接口。

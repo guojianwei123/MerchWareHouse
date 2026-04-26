@@ -4,11 +4,11 @@
 实现展示柜布局保存、库存项摆放关系和公开只读分享视图。
 
 ## 验收标准
-- [ ] 在 `src/types/models/spatial.schema.ts` 或相邻 schema 中定义展示柜、空间节点和展示项引用关系。
-- [ ] `src/store/roomStore.ts` 支持保存和读取当前展示柜布局。
-- [ ] `src/pages/RoomEditorPage` 能读取空间节点并渲染展示柜布局。
-- [ ] 新增或完善公开只读展示页，分享视图只展示名称、IP、人物、系列、分类和图片。
-- [ ] 分享视图不暴露购入价、市场价等资产字段。
+- [x] 在 `src/types/models/spatial.schema.ts` 或相邻 schema 中定义展示柜、空间节点和展示项引用关系。
+- [x] `src/store/roomStore.ts` 支持保存和读取当前展示柜布局。
+- [x] `src/pages/RoomEditorPage` 能读取空间节点并渲染展示柜布局。
+- [x] 新增或完善公开只读展示页，分享视图只展示名称、IP、人物、系列、分类和图片。
+- [x] 分享视图不暴露购入价、市场价等资产字段。
 
 ## 边界
 - 不实现复杂权限系统；MVP 使用公开/私密状态控制是否可访问。

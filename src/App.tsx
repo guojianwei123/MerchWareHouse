@@ -15,6 +15,7 @@ import themeWaterThumb from './assets/aqua-opera/theme-water-thumb.png';
 import './styles.css';
 
 type PageKey = 'room' | 'items' | 'upload' | 'draft' | 'category' | 'profile' | 'dashboard' | 'share';
+type ThemeKey = 'theme-aqua-opera' | 'theme-cream-desk' | 'theme-mint-cabinet' | 'theme-ai';
 
 const tabs: Array<{ key: PageKey; label: string; icon: string; image?: string }> = [
   { key: 'room', label: '房间', icon: '⌂', image: iconRoomCabinet },
@@ -24,11 +25,23 @@ const tabs: Array<{ key: PageKey; label: string; icon: string; image?: string }>
   { key: 'profile', label: '我的', icon: '◌', image: iconProfileCrown },
 ];
 
+const getInitialPage = (): PageKey => {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get('page') === 'share' || params.has('showcase')) {
+    return 'share';
+  }
+
+  return 'room';
+};
+
 export const App: React.FC = () => {
-  const [page, setPage] = useState<PageKey>('room');
+  const [page, setPage] = useState<PageKey>(() => getInitialPage());
+  const [themeKey, setThemeKey] = useState<ThemeKey>('theme-aqua-opera');
+  const [themeTokens, setThemeTokens] = useState<Record<string, string>>({});
 
   return (
-    <main className="app-shell theme-aqua-opera">
+    <main className={`app-shell ${themeKey}`} style={themeTokens as React.CSSProperties}>
       <div className="phone-frame">
         <section className="app-content">
           {page === 'room' ? <RoomEditorPage /> : null}
@@ -36,7 +49,17 @@ export const App: React.FC = () => {
           {page === 'upload' ? <UploadPage onDraftReady={() => setPage('draft')} /> : null}
           {page === 'draft' ? <DraftReviewPage onDone={(target) => setPage(target)} /> : null}
           {page === 'category' ? <CategoryPage /> : null}
-          {page === 'profile' ? <ProfilePage onOpenDashboard={() => setPage('dashboard')} onOpenShare={() => setPage('share')} /> : null}
+          {page === 'profile' ? (
+            <ProfilePage
+              activeTheme={themeKey}
+              onOpenDashboard={() => setPage('dashboard')}
+              onOpenShare={() => setPage('share')}
+              onThemeChange={(nextTheme, tokens = {}) => {
+                setThemeKey(nextTheme);
+                setThemeTokens(tokens);
+              }}
+            />
+          ) : null}
           {page === 'dashboard' ? <AssetDashboardPage /> : null}
           {page === 'share' ? <ShowcaseSharePage /> : null}
         </section>

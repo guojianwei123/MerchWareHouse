@@ -20,6 +20,7 @@ const validBadge = {
   diameter: 58,
   shape: 'round',
 };
+const validImageDataUrl = 'data:image/png;base64,aGVsbG8=';
 
 describe('IngestionService', () => {
   it('creates a draft from a valid AI object and fills system fields', async () => {
@@ -40,6 +41,15 @@ describe('IngestionService', () => {
     expect(draft.name).toBe('Birthday Badge');
   });
 
+  it('creates a draft from a valid image data URL', async () => {
+    const service = new IngestionService(new StaticVisionAdapter(validBadge));
+
+    const draft = await service.processScreenshot(validImageDataUrl);
+
+    expect(draft.imageUrl).toBe(validImageDataUrl);
+    expect(draft.type).toBe('badge');
+  });
+
   it('rejects extracted data missing required category fields', async () => {
     const service = new IngestionService(
       new StaticVisionAdapter({
@@ -54,6 +64,30 @@ describe('IngestionService', () => {
   it('rejects invalid image URLs before calling the adapter', async () => {
     const service = new IngestionService(new StaticVisionAdapter(validBadge));
 
-    await expect(service.processScreenshot('not-a-url')).rejects.toThrow('imageUrl must be a valid URL');
+    await expect(service.processScreenshot('not-a-url')).rejects.toThrow(
+      'imageUrl must be an http(s) URL or image data URL',
+    );
+  });
+
+  it('rejects non-image data URLs before calling the adapter', async () => {
+    const service = new IngestionService(new StaticVisionAdapter(validBadge));
+
+    await expect(service.processScreenshot('data:text/plain;base64,aGVsbG8=')).rejects.toThrow(
+      'imageUrl must be an http(s) URL or image data URL',
+    );
+  });
+
+  it('rejects non-base64 image data URLs before calling the adapter', async () => {
+    const service = new IngestionService(new StaticVisionAdapter(validBadge));
+
+    await expect(service.processScreenshot('data:image/png,hello')).rejects.toThrow(
+      'imageUrl must be an http(s) URL or image data URL',
+    );
+  });
+
+  it('rejects empty image inputs before calling the adapter', async () => {
+    const service = new IngestionService(new StaticVisionAdapter(validBadge));
+
+    await expect(service.processScreenshot('')).rejects.toThrow('imageUrl must be an http(s) URL or image data URL');
   });
 });

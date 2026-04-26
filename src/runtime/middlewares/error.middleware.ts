@@ -9,11 +9,19 @@ export const errorHandler = (
 ) => {
   if (err instanceof ZodError) {
     return res.status(400).json({
-      error: 'Validation Error',
-      details: err.errors,
+      data: null,
+      error: {
+        message: 'Validation Error',
+        details: err.errors,
+      },
+      code: 'VALIDATION_ERROR',
     });
   }
 
   console.error(err);
-  res.status(500).json({ error: 'Internal Server Error' });
+  res.status(500).json({
+    data: null,
+    error: { message: err.message || 'Internal Server Error' },
+    code: 'INTERNAL_ERROR',
+  });
 };

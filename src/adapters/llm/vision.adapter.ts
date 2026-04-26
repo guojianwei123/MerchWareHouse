@@ -87,9 +87,13 @@ export class QwenVisionAdapter implements VisionAdapter {
 }
 
 export const createVisionAdapterFromEnv = (): VisionAdapter => {
-  if (process.env.DASHSCOPE_API_KEY) {
+  if (process.env.AI_PROVIDER === 'mock') {
+    return new MockVisionAdapter();
+  }
+
+  if (process.env.AI_PROVIDER === 'dashscope' || process.env.DASHSCOPE_API_KEY) {
     return new QwenVisionAdapter();
   }
 
-  return new MockVisionAdapter();
+  throw new Error('AI_PROVIDER must be set to dashscope for real AI extraction, or mock for local tests');
 };

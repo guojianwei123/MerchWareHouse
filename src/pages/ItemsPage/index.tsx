@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { DynamicGuziForm } from '../../components/Forms/DynamicGuziForm';
+import { api } from '../../service/api.service';
 import { useInventoryStore } from '../../store/inventoryStore';
 import type { GuziItem, GuziType } from '../../types/models/guzi.schema';
 
@@ -20,6 +21,7 @@ const filterOptions: Array<{ value: 'all' | GuziType; label: string }> = [
   { value: 'acrylic', label: '亚克力' },
   { value: 'fabric', label: '布艺' },
   { value: 'figure', label: '手办' },
+  { value: 'practical', label: '实用' },
   { value: 'special', label: '特殊' },
 ];
 
@@ -28,8 +30,18 @@ export const ItemsPage: React.FC = () => {
   const [activeType, setActiveType] = useState<'all' | GuziType>('all');
   const [editingItem, setEditingItem] = useState<GuziItem | null>(null);
   const items = useInventoryStore((state) => state.items);
+  const setItems = useInventoryStore((state) => state.setItems);
   const updateItem = useInventoryStore((state) => state.updateItem);
   const removeItem = useInventoryStore((state) => state.removeItem);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.listItems()
+      .then(setItems)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : '库存加载失败');
+      });
+  }, [setItems]);
 
   const filteredItems = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -47,9 +59,27 @@ export const ItemsPage: React.FC = () => {
     });
   }, [activeType, items, query]);
 
-  const saveEdit = (item: GuziItem) => {
-    updateItem(item);
-    setEditingItem(null);
+  const saveEdit = async (item: GuziItem) => {
+    setError(null);
+
+    try {
+      const saved = await api.updateItem(item);
+      updateItem(saved);
+      setEditingItem(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '保存失败');
+    }
+  };
+
+  const deleteItem = async (item: GuziItem) => {
+    setError(null);
+
+    try {
+      await api.deleteItem(item.id);
+      removeItem(item.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '删除失败');
+    }
   };
 
   return (
@@ -81,6 +111,8 @@ export const ItemsPage: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {error ? <p className="inline-alert" role="alert">{error}</p> : null}
 
       {editingItem ? (
         <section className="form-panel">
@@ -114,7 +146,7 @@ export const ItemsPage: React.FC = () => {
                 <button type="button" onClick={() => setEditingItem(item)}>
                   编辑
                 </button>
-                <button type="button" onClick={() => removeItem(item.id)}>
+                <button type="button" onClick={() => deleteItem(item)}>
                   删除
                 </button>
               </div>

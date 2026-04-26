@@ -7,6 +7,7 @@ const categories = [
   { type: 'acrylic', label: '亚克力', tone: 'mint', icon: '▵' },
   { type: 'figure', label: '手办', tone: 'gold', icon: '♙' },
   { type: 'fabric', label: '布艺', tone: 'blue', icon: '◒' },
+  { type: 'practical', label: '实用', tone: 'mint', icon: '◈' },
   { type: 'special', label: '特殊', tone: 'pink', icon: '✦' },
 ];
 
@@ -24,8 +25,8 @@ export const CategoryPage: React.FC = () => {
       <section className="folder-grid">
         <article className="folder-card create">
           <span className="folder-icon">+</span>
-          <h2>创建品类</h2>
-          <p>自定义一个新的收纳册</p>
+          <h2>固定七大分类</h2>
+          <p>自定义品类暂未开放</p>
         </article>
         {categories.map((category) => {
           const count = items.filter((item) => item.type === category.type).length;

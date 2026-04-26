@@ -6,10 +6,10 @@ import {
   type ShowcasePublicView,
 } from '../types/models/spatial.schema';
 import type { GuziItem } from '../types/models/guzi.schema';
-import { defaultShowcaseRepository, ShowcaseRepository } from '../repo/showcase.repo';
+import { defaultShowcaseRepository, type ShowcaseRepositoryPort } from '../repo/showcase.repo';
 
 export class ShowcaseService {
-  constructor(private readonly repository: ShowcaseRepository = defaultShowcaseRepository) {}
+  constructor(private readonly repository: ShowcaseRepositoryPort = defaultShowcaseRepository) {}
 
   async saveShowcase(input: unknown): Promise<Showcase> {
     const showcase = ShowcaseSchema.parse(input);
@@ -51,6 +51,22 @@ export class ShowcaseService {
       isPublic: true,
       nodes: showcase.nodes,
       items: publicItems,
+    });
+  }
+
+  async clonePublicShowcase(showcaseId: string, ownerId: string): Promise<Showcase | null> {
+    const showcase = await this.repository.findPublicById(showcaseId);
+
+    if (!showcase) {
+      return null;
+    }
+
+    return this.saveShowcase({
+      ...showcase,
+      id: `showcase_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      ownerId,
+      title: `${showcase.title} 副本`,
+      isPublic: false,
     });
   }
 }

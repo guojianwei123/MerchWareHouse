@@ -1,5 +1,6 @@
 import React from 'react';
 import { DynamicGuziForm } from '../../components/Forms/DynamicGuziForm';
+import { api } from '../../service/api.service';
 import { useInventoryStore } from '../../store/inventoryStore';
 import type { GuziItem } from '../../types/models/guzi.schema';
 
@@ -9,13 +10,17 @@ interface DraftReviewPageProps {
 
 export const DraftReviewPage: React.FC<DraftReviewPageProps> = ({ onDone }) => {
   const draftItem = useInventoryStore((state) => state.draftItem);
+  const draftQueue = useInventoryStore((state) => state.draftQueue);
   const clearDraftItem = useInventoryStore((state) => state.clearDraftItem);
-  const addItem = useInventoryStore((state) => state.addItem);
+  const confirmDraft = useInventoryStore((state) => state.confirmDraft);
 
-  const confirmItem = (item: GuziItem) => {
-    addItem(item);
-    clearDraftItem();
-    onDone('items');
+  const confirmItem = async (item: GuziItem) => {
+    await api.createItem(item);
+    confirmDraft();
+
+    if (draftQueue.length <= 1) {
+      onDone('items');
+    }
   };
 
   const discardDraft = () => {

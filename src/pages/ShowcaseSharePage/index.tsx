@@ -1,26 +1,45 @@
-import React, { useState } from 'react';
-import { defaultShowcaseService } from '../../service/showcase.service';
-import { useInventoryStore } from '../../store/inventoryStore';
+import React, { useEffect, useState } from 'react';
+import { api } from '../../service/api.service';
+import { useRoomStore } from '../../store/roomStore';
 import type { ShowcasePublicView } from '../../types/models/spatial.schema';
 
 export const ShowcaseSharePage: React.FC = () => {
-  const [showcaseId, setShowcaseId] = useState('');
+  const [showcaseId, setShowcaseId] = useState(() => new URLSearchParams(window.location.search).get('showcase') ?? '');
   const [view, setView] = useState<ShowcasePublicView | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const items = useInventoryStore((state) => state.items);
+  const [notice, setNotice] = useState<string | null>(null);
+  const loadShowcase = useRoomStore((state) => state.loadShowcase);
+  const ownerId = useRoomStore((state) => state.ownerId);
 
   const loadPublicView = async () => {
     setError(null);
-    const publicView = await defaultShowcaseService.getPublicView(showcaseId, items);
 
-    if (!publicView) {
+    try {
+      setView(await api.getPublicShowcase(showcaseId));
+    } catch (err) {
       setView(null);
-      setError('展示柜不存在或未公开。');
-      return;
+      setError(err instanceof Error ? err.message : '展示柜不存在或未公开。');
     }
-
-    setView(publicView);
   };
+
+  const saveSameLayout = async () => {
+    setError(null);
+    setNotice(null);
+
+    try {
+      const cloned = await api.cloneShowcase(showcaseId, ownerId);
+      loadShowcase(cloned);
+      setNotice(`已保存同款布局：${cloned.title}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '保存同款布局失败');
+    }
+  };
+
+  useEffect(() => {
+    if (showcaseId) {
+      void loadPublicView();
+    }
+  }, []);
 
   return (
     <div className="page-stack showcase-share-page">
@@ -40,6 +59,7 @@ export const ShowcaseSharePage: React.FC = () => {
         </button>
       </section>
       {error ? <p className="inline-alert" role="alert">{error}</p> : null}
+      {notice ? <p className="inline-note">{notice}</p> : null}
 
       {view ? (
         <section className="public-cabinet">
@@ -71,7 +91,7 @@ export const ShowcaseSharePage: React.FC = () => {
               </li>
             ))}
           </ul>
-          <button type="button">保存同款布局</button>
+          <button type="button" onClick={saveSameLayout}>保存同款布局</button>
         </section>
       ) : null}
     </div>

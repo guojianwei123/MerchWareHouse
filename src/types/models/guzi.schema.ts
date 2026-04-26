@@ -1,7 +1,9 @@
 import { z } from 'zod';
+import { isSupportedImageSource } from './local-image.schema';
 
 const PriceSchema = z.number().nonnegative();
 const DimensionSchema = z.number().positive();
+export const ImageSourceSchema = z.string().refine(isSupportedImageSource, 'imageUrl must be a valid URL or image data URL');
 
 export const GuziTypeSchema = z.enum([
   'paper_card',
@@ -19,7 +21,7 @@ export const BaseGuziSchema = z.object({
   ip: z.string().min(1),
   character: z.string().min(1),
   series: z.string().min(1),
-  imageUrl: z.string().url(),
+  imageUrl: ImageSourceSchema,
   officialPrice: PriceSchema.optional(),
   purchasePrice: PriceSchema.optional(),
   marketPrice: PriceSchema.optional(),
