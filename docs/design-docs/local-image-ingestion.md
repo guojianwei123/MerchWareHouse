@@ -10,7 +10,7 @@
 
 ## Web
 
-Web 端使用系统文件选择器读取 JPEG、PNG 或 WebP 图片，转换为 Data URL 后调用 `POST /api/ingestion/extract`。
+Web 端使用系统文件选择器读取 JPEG 或 PNG 图片，转换为 Data URL 后调用 `POST /api/ingestion/extract`。
 
 ## 微信小程序
 
@@ -18,4 +18,4 @@ Web 端使用系统文件选择器读取 JPEG、PNG 或 WebP 图片，转换为 
 
 ## iOS 原生
 
-iOS 原生端使用系统照片选择器取得图片二进制，保留或转换为 JPEG、PNG、WebP 后组装 Data URL，并调用同一个 `POST /api/ingestion/extract` 接口。当前仓库不包含 iOS 工程。
+iOS 原生端使用系统照片选择器取得图片二进制，保留或转换为 JPEG、PNG 后组装 Data URL，并调用同一个 `POST /api/ingestion/extract` 接口。当前仓库不包含 iOS 工程。

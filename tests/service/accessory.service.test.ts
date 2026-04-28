@@ -55,4 +55,10 @@ describe('AccessoryService', () => {
       recommendedSize: { unit: 'mm', width: 100, height: 140 },
     });
   });
+
+  it('returns no recommendations when required dimensions are missing', () => {
+    expect(service.recommendForItem({ ...base, type: 'paper_card' })).toEqual([]);
+    expect(service.recommendForItem({ ...base, type: 'badge' })).toEqual([]);
+    expect(service.recommendForItem({ ...base, type: 'acrylic' })).toEqual([]);
+  });
 });

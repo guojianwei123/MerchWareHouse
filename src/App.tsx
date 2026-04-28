@@ -39,21 +39,29 @@ export const App: React.FC = () => {
   const [page, setPage] = useState<PageKey>(() => getInitialPage());
   const [themeKey, setThemeKey] = useState<ThemeKey>('theme-aqua-opera');
   const [themeTokens, setThemeTokens] = useState<Record<string, string>>({});
+  const [isSecondaryActive, setIsSecondaryActive] = useState(false);
+
+  const navigate = (nextPage: PageKey) => {
+    setIsSecondaryActive(false);
+    setPage(nextPage);
+  };
 
   return (
     <main className={`app-shell ${themeKey}`} style={themeTokens as React.CSSProperties}>
       <div className="phone-frame">
         <section className="app-content">
-          {page === 'room' ? <RoomEditorPage /> : null}
-          {page === 'items' ? <ItemsPage /> : null}
-          {page === 'upload' ? <UploadPage onDraftReady={() => setPage('draft')} /> : null}
-          {page === 'draft' ? <DraftReviewPage onDone={(target) => setPage(target)} /> : null}
+          {page === 'room' ? <RoomEditorPage onSecondaryChange={setIsSecondaryActive} /> : null}
+          {page === 'items' ? <ItemsPage onSecondaryChange={setIsSecondaryActive} /> : null}
+          {page === 'upload' ? (
+            <UploadPage onDraftReady={() => navigate('draft')} onSecondaryChange={setIsSecondaryActive} />
+          ) : null}
+          {page === 'draft' ? <DraftReviewPage onDone={(target) => navigate(target)} /> : null}
           {page === 'category' ? <CategoryPage /> : null}
           {page === 'profile' ? (
             <ProfilePage
               activeTheme={themeKey}
-              onOpenDashboard={() => setPage('dashboard')}
-              onOpenShare={() => setPage('share')}
+              onOpenDashboard={() => navigate('dashboard')}
+              onOpenShare={() => navigate('share')}
               onThemeChange={(nextTheme, tokens = {}) => {
                 setThemeKey(nextTheme);
                 setThemeTokens(tokens);
@@ -63,13 +71,13 @@ export const App: React.FC = () => {
           {page === 'dashboard' ? <AssetDashboardPage /> : null}
           {page === 'share' ? <ShowcaseSharePage /> : null}
         </section>
-        <nav className="bottom-nav" aria-label="主导航">
+        <nav className={`bottom-nav ${isSecondaryActive || page === 'draft' ? 'hidden' : ''}`} aria-label="主导航">
           {tabs.map((item) => (
             <button
               key={item.key}
               type="button"
               className={`nav-item ${page === item.key ? 'active' : ''} ${item.key === 'upload' ? 'primary' : ''}`}
-              onClick={() => setPage(item.key)}
+              onClick={() => navigate(item.key)}
               aria-label={item.label}
             >
               <span className="nav-icon">

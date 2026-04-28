@@ -1,4 +1,4 @@
-export const SUPPORTED_LOCAL_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const SUPPORTED_LOCAL_IMAGE_TYPES = ['image/jpeg', 'image/png'] as const;
 
 export const LOCAL_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -18,7 +18,7 @@ export const isSupportedLocalImageType = (type: string): type is SupportedLocalI
 };
 
 export const isSupportedImageDataUrl = (value: string): boolean => {
-  const match = value.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/);
+  const match = value.match(/^data:(image\/(?:jpeg|png));base64,([A-Za-z0-9+/]+={0,2})$/);
 
   if (!match) {
     return false;
@@ -50,10 +50,6 @@ export const inferImageTypeFromName = (name: string): SupportedLocalImageType | 
 
   if (normalized.endsWith('.png')) {
     return 'image/png';
-  }
-
-  if (normalized.endsWith('.webp')) {
-    return 'image/webp';
   }
 
   return null;

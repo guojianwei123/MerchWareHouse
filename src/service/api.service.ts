@@ -46,7 +46,7 @@ const queryString = (filter: GuziFilter): string => {
 
 export const fileToLocalImageInput = (file: File): Promise<LocalImageInput> => {
   if (!isSupportedLocalImageType(file.type)) {
-    return Promise.reject(new Error('请选择 JPEG、PNG 或 WebP 图片。'));
+    return Promise.reject(new Error('请选择 JPEG 或 PNG 图片。'));
   }
 
   const type = file.type;
@@ -77,13 +77,13 @@ export const fileToLocalImageInput = (file: File): Promise<LocalImageInput> => {
 };
 
 export const api = {
-  extractGuziDraft: (imageUrl: string): Promise<GuziItem> => {
+  extractGuziDraft: (imageUrl: string): Promise<GuziItem[]> => {
     return request('/api/ingestion/extract', {
       method: 'POST',
       body: JSON.stringify({ imageUrl }),
     });
   },
-  extractGuziDraftFromLocalImage: (image: LocalImageInput): Promise<GuziItem> => {
+  extractGuziDraftFromLocalImage: (image: LocalImageInput): Promise<GuziItem[]> => {
     return request('/api/ingestion/extract', {
       method: 'POST',
       body: JSON.stringify({ imageUrl: image.dataUrl }),

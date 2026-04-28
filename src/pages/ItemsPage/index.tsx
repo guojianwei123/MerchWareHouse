@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { DynamicGuziForm } from '../../components/Forms/DynamicGuziForm';
+import { SecondaryPage } from '../../components/SecondaryPage';
 import { api } from '../../service/api.service';
 import { useInventoryStore } from '../../store/inventoryStore';
 import type { GuziItem, GuziType } from '../../types/models/guzi.schema';
@@ -25,7 +26,11 @@ const filterOptions: Array<{ value: 'all' | GuziType; label: string }> = [
   { value: 'special', label: '特殊' },
 ];
 
-export const ItemsPage: React.FC = () => {
+interface ItemsPageProps {
+  onSecondaryChange?: (active: boolean) => void;
+}
+
+export const ItemsPage: React.FC<ItemsPageProps> = ({ onSecondaryChange }) => {
   const [query, setQuery] = useState('');
   const [activeType, setActiveType] = useState<'all' | GuziType>('all');
   const [editingItem, setEditingItem] = useState<GuziItem | null>(null);
@@ -42,6 +47,12 @@ export const ItemsPage: React.FC = () => {
         setError(err instanceof Error ? err.message : '库存加载失败');
       });
   }, [setItems]);
+
+  useEffect(() => {
+    onSecondaryChange?.(editingItem !== null);
+
+    return () => onSecondaryChange?.(false);
+  }, [editingItem, onSecondaryChange]);
 
   const filteredItems = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -82,6 +93,21 @@ export const ItemsPage: React.FC = () => {
     }
   };
 
+  if (editingItem) {
+    return (
+      <SecondaryPage title="编辑谷子" eyebrow="物品" onBack={() => setEditingItem(null)} className="items-page">
+        <section className="form-panel">
+          <DynamicGuziForm
+            mode="edit"
+            initialData={editingItem}
+            onSubmit={saveEdit}
+            onCancel={() => setEditingItem(null)}
+          />
+        </section>
+      </SecondaryPage>
+    );
+  }
+
   return (
     <div className="page-stack items-page">
       <header className="page-hero compact">
@@ -113,17 +139,6 @@ export const ItemsPage: React.FC = () => {
       </div>
 
       {error ? <p className="inline-alert" role="alert">{error}</p> : null}
-
-      {editingItem ? (
-        <section className="form-panel">
-          <DynamicGuziForm
-            mode="edit"
-            initialData={editingItem}
-            onSubmit={saveEdit}
-            onCancel={() => setEditingItem(null)}
-          />
-        </section>
-      ) : null}
 
       {filteredItems.length === 0 ? (
         <section className="empty-card">

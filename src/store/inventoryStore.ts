@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GuziFilter, GuziItem } from '../types/models/guzi.schema';
+import { confirmDraftInQueue } from '../utils/draftQueue';
 
 interface InventoryState {
   draftItem: GuziItem | null;
@@ -8,7 +9,7 @@ interface InventoryState {
   setDraftItem: (item: GuziItem) => void;
   setDraftQueue: (items: GuziItem[]) => void;
   clearDraftItem: () => void;
-  confirmDraft: () => void;
+  confirmDraft: (item: GuziItem) => void;
   addItem: (item: GuziItem) => void;
   setItems: (items: GuziItem[]) => void;
   updateItem: (item: GuziItem) => void;
@@ -23,20 +24,14 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   setDraftItem: (item) => set({ draftItem: item }),
   setDraftQueue: (draftQueue) => set({ draftQueue, draftItem: draftQueue[0] ?? null }),
   clearDraftItem: () => set({ draftItem: null, draftQueue: [] }),
-  confirmDraft: () => {
+  confirmDraft: (item) => {
     const { draftItem, draftQueue, items } = get();
 
     if (!draftItem) {
       return;
     }
 
-    const nextQueue = draftQueue.filter((item) => item.id !== draftItem.id);
-
-    set({
-      draftItem: nextQueue[0] ?? null,
-      draftQueue: nextQueue,
-      items: [...items.filter((item) => item.id !== draftItem.id), draftItem],
-    });
+    set(confirmDraftInQueue(draftQueue, draftItem, item, items));
   },
   addItem: (item) => set((state) => ({ items: [...state.items, item] })),
   setItems: (items) => set({ items }),

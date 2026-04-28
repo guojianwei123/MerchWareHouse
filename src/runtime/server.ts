@@ -1,8 +1,12 @@
 import { createApp } from './app';
+import { appLogger } from '../adapters/logging/logger';
 
 const port = Number(process.env.PORT ?? 3000);
 const app = createApp();
 
 app.listen(port, () => {
-  console.log(`Guozi Warehouse API listening on http://localhost:${port}`);
+  appLogger.info('Guozi Warehouse API listening', {
+    module: 'server',
+    url: `http://localhost:${port}`,
+  });
 });

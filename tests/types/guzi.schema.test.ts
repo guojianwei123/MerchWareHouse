@@ -30,7 +30,18 @@ describe('GuziUnionSchema', () => {
     }
   });
 
-  it('rejects a category missing required physical fields', () => {
-    expect(() => GuziUnionSchema.parse({ ...base, type: 'paper_card', width: 63 })).toThrow();
+  it('accepts custom non-empty categories without physical fields', () => {
+    expect(GuziUnionSchema.parse({ ...base, type: '票根' })).toMatchObject({
+      type: '票根',
+    });
+  });
+
+  it('rejects empty categories', () => {
+    expect(() => GuziUnionSchema.parse({ ...base, type: '' })).toThrow();
+  });
+
+  it('rejects non-positive dimensions when provided', () => {
+    expect(() => GuziUnionSchema.parse({ ...base, type: '纸片', width: 0 })).toThrow();
+    expect(() => GuziUnionSchema.parse({ ...base, type: '吧唧', diameter: -1 })).toThrow();
   });
 });

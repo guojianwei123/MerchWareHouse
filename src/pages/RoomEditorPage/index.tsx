@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { DraggableItem } from '../../components/Spatial/DraggableItem';
+import { SecondaryPage } from '../../components/SecondaryPage';
 import homeShowcase from '../../assets/aqua-opera/home-showcase.png';
 import iconBatchBox from '../../assets/aqua-opera/icon-batch-box.png';
 import iconItemStar from '../../assets/aqua-opera/icon-item-star.png';
@@ -32,19 +33,20 @@ const createNodeId = (prefix: string): string => (
 
 const getItemDisplaySize = (item: GuziItem): Pick<SpatialNode, 'width' | 'height'> => {
   if (item.type === 'badge') {
-    return { width: Math.max(48, item.diameter), height: Math.max(48, item.diameter) };
+    const diameter = item.diameter ?? 72;
+    return { width: Math.max(48, diameter), height: Math.max(48, diameter) };
   }
 
   if (item.type === 'paper_card' || item.type === 'fabric') {
-    return { width: item.width, height: item.length };
+    return { width: item.width ?? 72, height: item.length ?? 72 };
   }
 
   if (item.type === 'acrylic') {
-    return { width: item.width ?? 58, height: item.height };
+    return { width: item.width ?? 58, height: item.height ?? 78 };
   }
 
   if (item.type === 'figure') {
-    return { width: 72, height: item.height };
+    return { width: 72, height: item.height ?? 96 };
   }
 
   return { width: 72, height: 72 };
@@ -68,7 +70,11 @@ const findOpenNodePosition = (
   return null;
 };
 
-export const RoomEditorPage: React.FC = () => {
+interface RoomEditorPageProps {
+  onSecondaryChange?: (active: boolean) => void;
+}
+
+export const RoomEditorPage: React.FC<RoomEditorPageProps> = ({ onSecondaryChange }) => {
   const title = useRoomStore((state) => state.title);
   const isPublic = useRoomStore((state) => state.isPublic);
   const nodes = useRoomStore((state) => state.nodes);
@@ -87,6 +93,12 @@ export const RoomEditorPage: React.FC = () => {
       setNodes(createDefaultLayout());
     }
   }, [nodes.length, setNodes]);
+
+  useEffect(() => {
+    onSecondaryChange?.(editorOpen);
+
+    return () => onSecondaryChange?.(false);
+  }, [editorOpen, onSecondaryChange]);
 
   const invalidNodeIds = useMemo(() => {
     return new Set(
@@ -173,6 +185,80 @@ export const RoomEditorPage: React.FC = () => {
     setNotice(`分享入口：${window.location.origin}${window.location.pathname}?page=share&showcase=${encodeURIComponent(saved.id)}`);
   };
 
+  const editorPanel = (
+    <section className="editor-panel">
+      <div className="section-heading editor-heading">
+        <div>
+          <span className="eyebrow">布置柜子</span>
+          <h2>{title}</h2>
+        </div>
+        <span className="status-badge">{isPublic ? '公开展示' : '私密收纳'}</span>
+      </div>
+      <div
+        className="cabinet-stage"
+        style={{ width: room?.width ?? 340, height: room?.height ?? 420 }}
+      >
+        <div className="cabinet-back" />
+        <div className="cabinet-side left" />
+        <div className="cabinet-side right" />
+        {displayNodes.map((node) => {
+          if (node.nodeType === 'shelf') {
+            return (
+              <div
+                key={node.id}
+                className="cabinet-shelf"
+                style={{ left: node.x, top: node.y, width: node.width, height: node.height }}
+              />
+            );
+          }
+
+          return (
+            <DraggableItem
+              key={node.id}
+              id={node.id}
+              x={node.x}
+              y={node.y}
+              width={node.width}
+              height={node.height}
+              invalid={invalidNodeIds.has(node.id)}
+              onMove={updateNodePosition}
+            />
+          );
+        })}
+      </div>
+      <label className="field-label">
+        展示柜名
+        <input value={title} onChange={(event) => setTitle(event.target.value)} />
+      </label>
+      <label className="switch-row">
+        <input
+          type="checkbox"
+          checked={isPublic}
+          onChange={(event) => setIsPublic(event.target.checked)}
+        />
+        公开分享
+      </label>
+      {savedId ? <p className="inline-note">已保存：{savedId}</p> : null}
+      {invalidNodeIds.size > 0 ? <p className="inline-alert" role="alert">存在重叠或越界节点，无法保存。</p> : null}
+      <div className="toolbar">
+        <button type="button" onClick={() => setNodes(createDefaultLayout())}>重置柜体</button>
+        <button type="button" onClick={addShelf} disabled={!room}>添加层板</button>
+        <button type="button" onClick={addItem} disabled={!room || !nextUnplacedItem}>添加物品</button>
+        <button type="button" className="primary-button" onClick={handleSave} disabled={invalidNodeIds.size > 0 || nodes.length === 0}>
+          保存
+        </button>
+      </div>
+    </section>
+  );
+
+  if (editorOpen) {
+    return (
+      <SecondaryPage title="我的柜子" eyebrow="布置柜子" onBack={() => setEditorOpen(false)} className="room-editor-page">
+        {editorPanel}
+      </SecondaryPage>
+    );
+  }
+
   return (
     <div className="page-stack room-editor-page">
       <header className="home-header">
@@ -196,7 +282,7 @@ export const RoomEditorPage: React.FC = () => {
       </section>
 
       <section className="home-shortcuts">
-        <button type="button" onClick={() => setEditorOpen((open) => !open)}>
+        <button type="button" onClick={() => setEditorOpen(true)}>
           <img src={iconRoomCabinet} alt="" aria-hidden="true" />
           <span>我的柜子</span>
         </button>
@@ -216,69 +302,6 @@ export const RoomEditorPage: React.FC = () => {
 
       {notice ? <p className="inline-note">{notice}</p> : null}
 
-      <section className={`editor-panel layout-editor ${editorOpen ? 'open' : ''}`}>
-        <div className="section-heading editor-heading">
-          <div>
-            <span className="eyebrow">布置柜子</span>
-            <h2>{title}</h2>
-          </div>
-          <span className="status-badge">{isPublic ? '公开展示' : '私密收纳'}</span>
-        </div>
-        <div
-          className="cabinet-stage"
-          style={{ width: room?.width ?? 340, height: room?.height ?? 420 }}
-        >
-          <div className="cabinet-back" />
-          <div className="cabinet-side left" />
-          <div className="cabinet-side right" />
-          {displayNodes.map((node) => {
-            if (node.nodeType === 'shelf') {
-              return (
-                <div
-                  key={node.id}
-                  className="cabinet-shelf"
-                  style={{ left: node.x, top: node.y, width: node.width, height: node.height }}
-                />
-              );
-            }
-
-            return (
-              <DraggableItem
-                key={node.id}
-                id={node.id}
-                x={node.x}
-                y={node.y}
-                width={node.width}
-                height={node.height}
-                invalid={invalidNodeIds.has(node.id)}
-                onMove={updateNodePosition}
-              />
-            );
-          })}
-        </div>
-        <label className="field-label">
-          展示柜名
-          <input value={title} onChange={(event) => setTitle(event.target.value)} />
-        </label>
-        <label className="switch-row">
-          <input
-            type="checkbox"
-            checked={isPublic}
-            onChange={(event) => setIsPublic(event.target.checked)}
-          />
-          公开分享
-        </label>
-        {savedId ? <p className="inline-note">已保存：{savedId}</p> : null}
-        {invalidNodeIds.size > 0 ? <p className="inline-alert" role="alert">存在重叠或越界节点，无法保存。</p> : null}
-        <div className="toolbar">
-          <button type="button" onClick={() => setNodes(createDefaultLayout())}>重置柜体</button>
-          <button type="button" onClick={addShelf} disabled={!room}>添加层板</button>
-          <button type="button" onClick={addItem} disabled={!room || !nextUnplacedItem}>添加物品</button>
-          <button type="button" className="primary-button" onClick={handleSave} disabled={invalidNodeIds.size > 0 || nodes.length === 0}>
-            保存
-          </button>
-        </div>
-      </section>
     </div>
   );
 };

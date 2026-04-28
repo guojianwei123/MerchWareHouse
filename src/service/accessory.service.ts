@@ -17,6 +17,10 @@ export interface AccessoryRecommendation {
 export class AccessoryService {
   recommendForItem(item: GuziItem): AccessoryRecommendation[] {
     if (item.type === 'paper_card') {
+      if (!item.width || !item.length) {
+        return [];
+      }
+
       return [
         {
           accessoryType: 'sleeve',
@@ -31,6 +35,10 @@ export class AccessoryService {
     }
 
     if (item.type === 'badge') {
+      if (!item.diameter) {
+        return [];
+      }
+
       return [
         {
           accessoryType: 'protector',
@@ -44,6 +52,10 @@ export class AccessoryService {
     }
 
     if (item.type === 'acrylic') {
+      if (!item.height) {
+        return [];
+      }
+
       return [
         {
           accessoryType: 'display_case',

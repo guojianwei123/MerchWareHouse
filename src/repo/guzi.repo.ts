@@ -51,21 +51,29 @@ export class GuziRepository implements GuziRepositoryPort {
   }
 }
 
-const typeSpecificKeys: Record<GuziItem['type'], string[]> = {
-  paper_card: ['length', 'width', 'paperType'],
-  acrylic: ['height', 'hasBase', 'width'],
-  badge: ['diameter', 'shape'],
-  fabric: ['length', 'width', 'material', 'height'],
-  figure: ['scale', 'height', 'manufacturer'],
-  practical: ['compatibleModel', 'length', 'width'],
-  special: ['specialType', 'description', 'isSecret'],
-};
+const detailKeys = [
+  'diameter',
+  'shape',
+  'length',
+  'width',
+  'height',
+  'material',
+  'scale',
+  'manufacturer',
+  'description',
+  'paperType',
+  'hasBase',
+  'compatibleModel',
+  'specialType',
+  'isSecret',
+  'notes',
+];
 
-const toDetails = (item: GuziItem): Prisma.InputJsonObject => {
+export const toDetails = (item: GuziItem): Prisma.InputJsonObject => {
   const details: Record<string, string | number | boolean> = {};
   const itemRecord = item as unknown as Record<string, string | number | boolean | undefined>;
 
-  for (const key of typeSpecificKeys[item.type]) {
+  for (const key of detailKeys) {
     const value = itemRecord[key];
 
     if (value !== undefined) {

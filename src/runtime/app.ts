@@ -13,6 +13,7 @@ import { GuziFilterSchema } from '../types/models/guzi.schema';
 import { isSupportedImageSource } from '../types/models/local-image.schema';
 import { ShowcaseSchema } from '../types/models/spatial.schema';
 import { errorHandler } from './middlewares/error.middleware';
+import { requestLogger } from './middlewares/request-logger.middleware';
 
 const prisma = new PrismaClient();
 const inventoryService = new InventoryService(new PrismaGuziRepository(prisma));
@@ -166,13 +167,14 @@ export const createApp = () => {
     next();
   });
   app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? '10mb' }));
+  app.use(requestLogger);
   app.use('/uploads', express.static(process.env.UPLOAD_DIR ?? './uploads'));
 
   app.post('/api/uploads/images', async (req, res, next) => {
     try {
       const input = uploadSchema.parse(req.body);
       const maxBytes = Number(process.env.MAX_UPLOAD_BYTES ?? 5 * 1024 * 1024);
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const allowedTypes = ['image/jpeg', 'image/png'];
 
       if (!allowedTypes.includes(input.contentType)) {
         return res.status(400).json({

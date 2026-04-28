@@ -1,9 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DynamicGuziForm } from '../../components/Forms/DynamicGuziForm';
+import { SecondaryPage } from '../../components/SecondaryPage';
 import { api, fileToLocalImageInput } from '../../service/api.service';
 import { useInventoryStore } from '../../store/inventoryStore';
 import type { GuziItem } from '../../types/models/guzi.schema';
 import { LOCAL_IMAGE_ACCEPT } from '../../types/models/local-image.schema';
+import { mapWithConcurrencySettled } from '../../utils/concurrency';
 import heroCameraShell from '../../assets/aqua-opera/hero-camera-shell.png';
 import iconBatchBox from '../../assets/aqua-opera/icon-batch-box.png';
 import iconLinkChain from '../../assets/aqua-opera/icon-link-chain.png';
@@ -11,7 +13,8 @@ import iconManualFeather from '../../assets/aqua-opera/icon-manual-feather.png';
 import ornamentShell from '../../assets/aqua-opera/ornament-shell.png';
 
 type EntryMode = 'ai' | 'link' | 'batch';
-type UploadView = 'main' | 'manual';
+type UploadView = 'main' | 'manual' | 'linkForm';
+const BATCH_IMPORT_CONCURRENCY = 3;
 
 interface MainViewSnapshot {
   mode: EntryMode;
@@ -23,6 +26,7 @@ interface MainViewSnapshot {
 
 interface UploadPageProps {
   onDraftReady: () => void;
+  onSecondaryChange?: (active: boolean) => void;
 }
 
 const isValidUrl = (value: string): boolean => {
@@ -33,7 +37,7 @@ const isValidUrl = (value: string): boolean => {
   }
 };
 
-export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady }) => {
+export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady, onSecondaryChange }) => {
   const [view, setView] = useState<UploadView>('main');
   const [mode, setMode] = useState<EntryMode>('ai');
   const [linkUrl, setLinkUrl] = useState('');
@@ -49,6 +53,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady }) => {
   const fileDialogRestoreCollapsedRef = useRef<boolean | null>(null);
   const setDraftItem = useInventoryStore((state) => state.setDraftItem);
   const setDraftQueue = useInventoryStore((state) => state.setDraftQueue);
+
+  useEffect(() => {
+    onSecondaryChange?.(view !== 'main');
+
+    return () => onSecondaryChange?.(false);
+  }, [onSecondaryChange, view]);
 
   const createDraft = (item: GuziItem) => {
     setDraftItem(item);
@@ -105,8 +115,14 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady }) => {
 
     try {
       const image = await fileToLocalImageInput(file);
-      const draft = await api.extractGuziDraftFromLocalImage(image);
-      createDraft(draft);
+      const drafts = await api.extractGuziDraftFromLocalImage(image);
+
+      if (drafts.length === 0) {
+        throw new Error('未从 OCR 文本中识别到可入库谷子');
+      }
+
+      setDraftQueue(drafts);
+      onDraftReady();
     } catch (err) {
       setError(err instanceof Error ? err.message : '识别失败');
       restoreAfterImageSelection();
@@ -132,9 +148,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady }) => {
       const parsed = await api.parseLink(linkUrl);
       setNotice(parsed.title ? `已读取页面：${parsed.title}` : '链接有效，请补齐字段。');
       setLinkFormOpen(true);
+      setView('linkForm');
     } catch (err) {
       setError(err instanceof Error ? err.message : '链接解析失败，请手动补齐字段。');
       setLinkFormOpen(true);
+      setView('linkForm');
     } finally {
       setIsProcessing(false);
     }
@@ -153,14 +171,21 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady }) => {
     const failures: string[] = [];
     const drafts: GuziItem[] = [];
 
-    for (const [index, file] of batchFiles.entries()) {
-      try {
+    const results = await mapWithConcurrencySettled(
+      batchFiles,
+      BATCH_IMPORT_CONCURRENCY,
+      async (file) => {
         const image = await fileToLocalImageInput(file);
-        const item = await api.extractGuziDraftFromLocalImage(image);
-        drafts.push(item);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : '识别失败';
-        failures.push(`第 ${index + 1} 行：${message}`);
+        return api.extractGuziDraftFromLocalImage(image);
+      },
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        drafts.push(...result.value);
+      } else {
+        const message = result.reason instanceof Error ? result.reason.message : '识别失败';
+        failures.push(`第 ${result.index + 1} 行：${message}`);
       }
     }
 
@@ -203,17 +228,26 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady }) => {
 
   if (view === 'manual') {
     return (
-      <div className="page-stack upload-page manual-entry-page">
-        <header className="upload-subpage-header">
-          <button type="button" className="link-button back-button" onClick={handleBackFromManual}>
-            返回
-          </button>
-          <h1>手动录入</h1>
-        </header>
+      <SecondaryPage title="手动录入" onBack={handleBackFromManual} className="upload-page manual-entry-page">
         <section className="form-panel manual-entry-panel">
           <DynamicGuziForm mode="create" onSubmit={createDraft} />
         </section>
-      </div>
+      </SecondaryPage>
+    );
+  }
+
+  if (view === 'linkForm') {
+    return (
+      <SecondaryPage title="链接补齐" onBack={() => setView('main')} className="upload-page manual-entry-page">
+        <section className="form-panel manual-entry-panel">
+          <DynamicGuziForm
+            mode="create"
+            sourceUrl={linkUrl}
+            onSubmit={createDraft}
+            onCancel={() => setView('main')}
+          />
+        </section>
+      </SecondaryPage>
     );
   }
 
@@ -295,7 +329,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady }) => {
               <button type="button" className="primary-button" onClick={handleLinkParse}>
                 校验链接并补齐字段
               </button>
-              {linkFormOpen ? <DynamicGuziForm mode="create" sourceUrl={linkUrl} onSubmit={createDraft} /> : null}
+              {linkFormOpen ? (
+                <button type="button" onClick={() => setView('linkForm')}>
+                  继续补齐字段
+                </button>
+              ) : null}
             </section>
           ) : null}
 

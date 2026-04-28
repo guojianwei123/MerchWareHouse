@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { GuziUnionSchema, type GuziItem, type GuziType } from '../../types/models/guzi.schema';
+import type { ZodIssue } from 'zod';
 
 type FormMode = 'create' | 'draft' | 'edit';
 
@@ -9,9 +10,11 @@ interface DynamicGuziFormProps {
   sourceUrl?: string;
   onSubmit: (item: GuziItem) => void;
   onCancel?: () => void;
+  values?: GuziFormValues;
+  onValuesChange?: (values: GuziFormValues) => void;
 }
 
-type FormValues = Record<string, string>;
+export type GuziFormValues = Record<string, string>;
 
 const guziTypes: Array<{ value: GuziType; label: string }> = [
   { value: 'badge', label: '吧唧' },
@@ -22,6 +25,8 @@ const guziTypes: Array<{ value: GuziType; label: string }> = [
   { value: 'practical', label: '实用' },
   { value: 'special', label: '特殊' },
 ];
+
+const customTypeValue = '__custom__';
 
 const shapeOptions = [
   { value: 'round', label: '圆形' },
@@ -46,8 +51,51 @@ const commonFields = [
   { name: 'marketPrice', label: '市价', placeholder: '0' },
 ];
 
-const createInitialValues = (initialData?: Partial<GuziItem>, sourceUrl?: string): FormValues => {
-  const values: FormValues = {
+const fieldLabels: Record<string, string> = {
+  type: '品类',
+  name: '名称',
+  ip: 'IP',
+  character: '人物',
+  series: '系列',
+  imageUrl: '图片 URL',
+  officialPrice: '官方价',
+  purchasePrice: '购入价',
+  marketPrice: '市价',
+  diameter: '直径',
+  shape: '形状',
+  length: '长',
+  width: '宽',
+  height: '高',
+  material: '材质',
+  scale: '比例',
+  manufacturer: '厂商',
+  compatibleModel: '适配型号',
+  description: '说明',
+};
+
+const isPresetGuziType = (type: string): boolean => guziTypes.some((option) => option.value === type);
+
+const formatValidationIssue = (issue: ZodIssue | undefined): string => {
+  if (!issue) {
+    return '请检查表单字段';
+  }
+
+  const fieldName = String(issue.path[0] ?? '');
+  const label = fieldLabels[fieldName];
+
+  if (label && issue.code === 'too_small') {
+    return `请填写${label}`;
+  }
+
+  if (fieldName === 'imageUrl') {
+    return '请填写有效的图片 URL';
+  }
+
+  return label ? `${label}：${issue.message}` : issue.message;
+};
+
+export const createGuziFormValues = (initialData?: Partial<GuziItem>, sourceUrl?: string): GuziFormValues => {
+  const values: GuziFormValues = {
     id: initialData?.id ?? `guzi_${Date.now()}`,
     type: initialData?.type ?? 'badge',
     name: initialData?.name ?? '',
@@ -91,9 +139,26 @@ const optionalNumber = (value: string): number | undefined => {
   return Number(value);
 };
 
-const requiredNumber = (value: string): number => Number(value);
+const optionalText = (value: string): string | undefined => {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
 
-const buildItemInput = (values: FormValues): unknown => {
+const buildCustomDetailInput = (values: GuziFormValues): Record<string, unknown> => ({
+  diameter: optionalNumber(values.diameter),
+  shape: optionalText(values.shape),
+  length: optionalNumber(values.length),
+  width: optionalNumber(values.width),
+  height: optionalNumber(values.height),
+  material: optionalText(values.material),
+  scale: optionalText(values.scale),
+  manufacturer: optionalText(values.manufacturer),
+  description: optionalText(values.description),
+  paperType: optionalText(values.paperType),
+  compatibleModel: optionalText(values.compatibleModel),
+});
+
+const buildItemInput = (values: GuziFormValues): unknown => {
   const base = {
     id: values.id,
     name: values.name,
@@ -110,8 +175,8 @@ const buildItemInput = (values: FormValues): unknown => {
     return {
       ...base,
       type: 'badge',
-      diameter: requiredNumber(values.diameter),
-      shape: values.shape,
+      diameter: optionalNumber(values.diameter),
+      shape: optionalText(values.shape),
     };
   }
 
@@ -119,9 +184,9 @@ const buildItemInput = (values: FormValues): unknown => {
     return {
       ...base,
       type: 'paper_card',
-      length: requiredNumber(values.length),
-      width: requiredNumber(values.width),
-      paperType: values.paperType.trim() || undefined,
+      length: optionalNumber(values.length),
+      width: optionalNumber(values.width),
+      paperType: optionalText(values.paperType),
     };
   }
 
@@ -129,7 +194,7 @@ const buildItemInput = (values: FormValues): unknown => {
     return {
       ...base,
       type: 'acrylic',
-      height: requiredNumber(values.height),
+      height: optionalNumber(values.height),
       hasBase: values.hasBase === 'true',
       width: optionalNumber(values.width),
     };
@@ -139,9 +204,9 @@ const buildItemInput = (values: FormValues): unknown => {
     return {
       ...base,
       type: 'fabric',
-      length: requiredNumber(values.length),
-      width: requiredNumber(values.width),
-      material: values.material,
+      length: optionalNumber(values.length),
+      width: optionalNumber(values.width),
+      material: optionalText(values.material),
       height: optionalNumber(values.height),
     };
   }
@@ -150,9 +215,9 @@ const buildItemInput = (values: FormValues): unknown => {
     return {
       ...base,
       type: 'figure',
-      scale: values.scale,
-      height: requiredNumber(values.height),
-      manufacturer: values.manufacturer,
+      scale: optionalText(values.scale),
+      height: optionalNumber(values.height),
+      manufacturer: optionalText(values.manufacturer),
     };
   }
 
@@ -160,7 +225,7 @@ const buildItemInput = (values: FormValues): unknown => {
     return {
       ...base,
       type: 'practical',
-      compatibleModel: values.compatibleModel,
+      compatibleModel: optionalText(values.compatibleModel),
       length: optionalNumber(values.length),
       width: optionalNumber(values.width),
     };
@@ -168,10 +233,17 @@ const buildItemInput = (values: FormValues): unknown => {
 
   return {
     ...base,
-    type: 'special',
-    specialType: values.specialType,
-    description: values.description,
-    isSecret: values.isSecret === 'true',
+    ...(values.type === 'special'
+      ? {
+          type: 'special',
+          specialType: optionalText(values.specialType),
+          description: optionalText(values.description),
+          isSecret: values.isSecret === 'true',
+        }
+      : {
+          type: values.type,
+          ...buildCustomDetailInput(values),
+        }),
   };
 };
 
@@ -181,10 +253,21 @@ export const DynamicGuziForm: React.FC<DynamicGuziFormProps> = ({
   sourceUrl,
   onSubmit,
   onCancel,
+  values: controlledValues,
+  onValuesChange,
 }) => {
-  const [values, setValues] = useState<FormValues>(() => createInitialValues(initialData, sourceUrl));
+  const [internalValues, setInternalValues] = useState<GuziFormValues>(() => createGuziFormValues(initialData, sourceUrl));
   const [error, setError] = useState<string | null>(null);
-  const selectedType = values.type as GuziType;
+  const values = controlledValues ?? internalValues;
+  const selectedType = values.type;
+  const typeSelectValue = isPresetGuziType(selectedType) ? selectedType : customTypeValue;
+  const isCustomType = typeSelectValue === customTypeValue;
+
+  useEffect(() => {
+    if (!controlledValues) {
+      setInternalValues(createGuziFormValues(initialData, sourceUrl));
+    }
+  }, [controlledValues, initialData?.id, sourceUrl]);
 
   const title = useMemo(() => {
     if (mode === 'edit') {
@@ -199,7 +282,18 @@ export const DynamicGuziForm: React.FC<DynamicGuziFormProps> = ({
   }, [mode]);
 
   const updateValue = (name: string, value: string) => {
-    setValues((current) => ({ ...current, [name]: value }));
+    const nextValues = { ...values, [name]: value };
+
+    if (controlledValues) {
+      onValuesChange?.(nextValues);
+      return;
+    }
+
+    setInternalValues(nextValues);
+  };
+
+  const updateType = (value: string) => {
+    updateValue('type', value === customTypeValue ? '' : value);
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -207,7 +301,7 @@ export const DynamicGuziForm: React.FC<DynamicGuziFormProps> = ({
     const parsed = GuziUnionSchema.safeParse(buildItemInput(values));
 
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? '请检查表单字段');
+      setError(formatValidationIssue(parsed.error.issues[0]));
       return;
     }
 
@@ -224,14 +318,22 @@ export const DynamicGuziForm: React.FC<DynamicGuziFormProps> = ({
 
       <label className="field-label">
         品类
-        <select value={selectedType} onChange={(event) => updateValue('type', event.target.value)}>
+        <select value={typeSelectValue} onChange={(event) => updateType(event.target.value)}>
           {guziTypes.map((type) => (
             <option key={type.value} value={type.value}>
               {type.label}
             </option>
           ))}
+          <option value={customTypeValue}>自定义</option>
         </select>
       </label>
+
+      {isCustomType ? (
+        <label className="field-label">
+          自定义品类
+          <input value={values.type} onChange={(event) => updateValue('type', event.target.value)} placeholder="例如：色纸 / 挂件 / 票根" />
+        </label>
+      ) : null}
 
       <div className="form-grid">
         {commonFields.map((field) => (
