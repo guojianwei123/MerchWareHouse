@@ -4,13 +4,13 @@
 实现微信小程序和 QQ 小程序兼容的真实用户登录，支持头像昵称展示，并将库存、分类、展示柜和导出等用户数据按登录用户完整隔离。Web/H5 保留开发访客模式，方便现有页面继续调试。
 
 ## 范围
-- [ ] 新增跨平台小程序登录适配层，统一封装 `wx.login`、`qq.login` 和头像昵称授权。
-- [ ] 新增后端认证接口 `POST /api/auth/miniapp/login`，用小程序 `code` 换取平台 `openid` 并签发本系统 session token。
-- [ ] 新增后端 `PATCH /api/auth/me`，用于保存用户授权后的头像昵称。
-- [ ] 新增 `User` 数据模型，并为库存、分类、展示柜等用户数据建立 owner 隔离。
-- [ ] 新增认证中间件，受保护接口必须从 session token 获取当前用户，不再信任客户端传入 ownerId。
-- [ ] 更新 `ProfilePage`，展示登录卡片、头像昵称授权入口、平台标识和同步状态。
-- [ ] Web/H5 开发环境保留 dev guest 登录，不作为生产登录方案。
+- [x] 新增跨平台小程序登录适配层，统一封装 `wx.login`、`qq.login` 和头像昵称授权。
+- [x] 新增后端认证接口 `POST /api/auth/miniapp/login`，用小程序 `code` 换取平台 `openid` 并签发本系统 session token。
+- [x] 新增后端 `PATCH /api/auth/me`，用于保存用户授权后的头像昵称。
+- [x] 新增 `User` 数据模型，并为库存、分类、展示柜等用户数据建立 owner 隔离。
+- [x] 新增认证中间件，受保护接口必须从 session token 获取当前用户，不再信任客户端传入 ownerId。
+- [x] 更新 `ProfilePage`，展示登录卡片、头像昵称授权入口、平台标识和同步状态。
+- [x] Web/H5 开发环境保留 dev guest 登录，不作为生产登录方案。
 
 ## 实现要求
 - 小程序登录适配器放在平台防腐层中，页面层不得直接调用 `wx.xxx` 或 `qq.xxx`。

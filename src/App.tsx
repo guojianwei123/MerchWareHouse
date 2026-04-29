@@ -8,8 +8,8 @@ import ProfilePage from './pages/ProfilePage';
 import RoomEditorPage from './pages/RoomEditorPage';
 import ShowcaseSharePage from './pages/ShowcaseSharePage';
 import UploadPage from './pages/UploadPage';
-import { LOCAL_OWNER_ID } from './config/categories';
 import { api } from './service/api.service';
+import { useAuthStore } from './store/authStore';
 import { useCategoryStore } from './store/categoryStore';
 import { useInventoryStore } from './store/inventoryStore';
 import iconCategoryTicket from './assets/aqua-opera/icon-category-ticket.png';
@@ -45,31 +45,42 @@ export const App: React.FC = () => {
   const [themeKey, setThemeKey] = useState<ThemeKey>('theme-aqua-opera');
   const [themeTokens, setThemeTokens] = useState<Record<string, string>>({});
   const [isSecondaryActive, setIsSecondaryActive] = useState(false);
+  const authStatus = useAuthStore((state) => state.status);
+  const login = useAuthStore((state) => state.login);
   const setCategories = useCategoryStore((state) => state.setCategories);
   const setItems = useInventoryStore((state) => state.setItems);
 
   useEffect(() => {
     let isMounted = true;
 
-    api.listCategories(LOCAL_OWNER_ID)
-      .then((categories) => {
-        if (isMounted) {
-          setCategories(categories);
-        }
-      })
-      .catch(() => undefined);
-    api.listItems()
-      .then((items) => {
-        if (isMounted) {
-          setItems(items);
-        }
-      })
-      .catch(() => undefined);
+    const bootstrap = async () => {
+      if (authStatus === 'loading') {
+        return;
+      }
+
+      const user = authStatus === 'authenticated' ? useAuthStore.getState().user : await login();
+
+      if (!isMounted || !user) {
+        return;
+      }
+
+      const [categories, items] = await Promise.all([
+        api.listCategories(),
+        api.listItems(),
+      ]);
+
+      if (isMounted) {
+        setCategories(categories);
+        setItems(items);
+      }
+    };
+
+    void bootstrap().catch(() => undefined);
 
     return () => {
       isMounted = false;
     };
-  }, [setCategories, setItems]);
+  }, [authStatus, login, setCategories, setItems]);
 
   const navigate = (nextPage: PageKey) => {
     setIsSecondaryActive(false);

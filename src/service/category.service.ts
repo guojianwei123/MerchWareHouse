@@ -51,7 +51,7 @@ export class CategoryService {
       return existing;
     }
 
-    await this.ensureCategoryUnused(existing.name);
+    await this.ensureCategoryUnused(parsed.ownerId, existing.name);
     await this.ensureNameAvailable(parsed.ownerId, parsed.name, existing.id);
 
     const updated = await this.categoryRepository.updateCategory({
@@ -68,7 +68,7 @@ export class CategoryService {
 
   async deleteCategory(id: string, ownerId: string): Promise<boolean> {
     const existing = await this.findOwnedCategory(id, ownerId);
-    await this.ensureCategoryUnused(existing.name);
+    await this.ensureCategoryUnused(ownerId, existing.name);
     return this.categoryRepository.deleteCategory(existing.id);
   }
 
@@ -90,8 +90,8 @@ export class CategoryService {
     }
   }
 
-  private async ensureCategoryUnused(name: string): Promise<void> {
-    const items = await this.guziRepository.listItems({ type: name });
+  private async ensureCategoryUnused(ownerId: string, name: string): Promise<void> {
+    const items = await this.guziRepository.listItems(ownerId, { type: name });
 
     if (items.length > 0) {
       throw new CategoryServiceError('该分类已有物品使用，不能重命名或删除。', 'CATEGORY_IN_USE', 409);

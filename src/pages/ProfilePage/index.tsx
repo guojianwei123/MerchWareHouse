@@ -7,6 +7,7 @@ import themeWaterTheater from '../../assets/aqua-opera/theme-water-theater.png';
 import themeWaterThumb from '../../assets/aqua-opera/theme-water-thumb.png';
 import { calculateAssetDashboard } from '../../service/asset-dashboard.service';
 import { api } from '../../service/api.service';
+import { useAuthStore } from '../../store/authStore';
 import { useInventoryStore } from '../../store/inventoryStore';
 
 type ThemeKey = 'theme-aqua-opera' | 'theme-cream-desk' | 'theme-mint-cabinet' | 'theme-ai';
@@ -33,8 +34,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [subject, setSubject] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const authStatus = useAuthStore((state) => state.status);
+  const user = useAuthStore((state) => state.user);
+  const authError = useAuthStore((state) => state.error);
+  const login = useAuthStore((state) => state.login);
+  const refreshProfile = useAuthStore((state) => state.refreshProfile);
   const items = useInventoryStore((state) => state.items);
   const stats = calculateAssetDashboard(items);
+  const shortUserId = user?.id.slice(-8) ?? '';
+  const displayName = user?.nickname ?? (user ? `${user.provider}-${shortUserId}` : '未登录');
 
   const generateTheme = async () => {
     setError(null);
@@ -88,6 +96,26 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         <h1>主题风格</h1>
       </header>
 
+      <section className="profile-login-card">
+        <div className="profile-avatar" aria-hidden="true">
+          {user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : <span>{displayName.slice(0, 1)}</span>}
+        </div>
+        <div className="profile-login-copy">
+          <span>{user ? `${user.provider} 同步中` : '账号同步'}</span>
+          <h2>{displayName}</h2>
+          {user ? <p>用户 ID：{shortUserId}</p> : <p>登录后同步库存、品类和展示柜。</p>}
+        </div>
+        {user ? (
+          <button type="button" onClick={refreshProfile} disabled={authStatus === 'loading'}>
+            授权头像昵称
+          </button>
+        ) : (
+          <button type="button" className="primary-button" onClick={login} disabled={authStatus === 'loading'}>
+            {authStatus === 'loading' ? '登录中' : '登录同步'}
+          </button>
+        )}
+      </section>
+
       <section className="theme-showcase-card">
         <div className="theme-selected-mark">✓</div>
         <img src={themeWaterTheater} alt="水蓝剧场主题预览" />
@@ -130,6 +158,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
       {notice ? <p className="inline-note">{notice}</p> : null}
       {error ? <p className="inline-alert" role="alert">{error}</p> : null}
+      {authError ? <p className="inline-alert" role="alert">{authError}</p> : null}
 
       <section className="asset-mini-card profile-asset-row">
         <div>

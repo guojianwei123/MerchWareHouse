@@ -1,6 +1,7 @@
 import type { GuziFilter, GuziItem } from '../types/models/guzi.schema';
 import type { GuziCategoryContext } from '../config/categories';
 import type { Category, CategoryTone } from '../types/models/category.schema';
+import type { AuthProvider, AuthSession, User, UserProfile } from '../types/models/user.schema';
 import {
   isSupportedImageDataUrl,
   isSupportedLocalImageType,
@@ -37,15 +38,25 @@ interface AiChatResponse {
 }
 
 interface CategoryCreateInput {
-  ownerId: string;
   name: string;
   tone: CategoryTone;
 }
 
 interface CategoryUpdateInput {
-  ownerId: string;
   name: string;
 }
+
+interface MiniappLoginInput {
+  provider: AuthProvider;
+  code: string;
+  profile?: UserProfile;
+}
+
+let authToken = '';
+
+export const setApiAuthToken = (token: string): void => {
+  authToken = token;
+};
 
 const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
   let response: Response;
@@ -55,6 +66,7 @@ const request = async <T>(path: string, options: RequestInit = {}): Promise<T> =
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         ...options.headers,
       },
     });
@@ -116,6 +128,18 @@ export const fileToLocalImageInput = (file: File): Promise<LocalImageInput> => {
 };
 
 export const api = {
+  loginWithMiniapp: (input: MiniappLoginInput): Promise<AuthSession> => {
+    return request('/api/auth/miniapp/login', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  },
+  updateMe: (profile: UserProfile): Promise<User> => {
+    return request('/api/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(profile),
+    });
+  },
   extractGuziDraft: (imageUrl: string, categories: GuziCategoryContext[] = []): Promise<GuziItem[]> => {
     return request('/api/ingestion/extract', {
       method: 'POST',
@@ -160,8 +184,8 @@ export const api = {
       method: 'DELETE',
     });
   },
-  listCategories: (ownerId: string): Promise<Category[]> => {
-    return request(`/api/categories?ownerId=${encodeURIComponent(ownerId)}`);
+  listCategories: (): Promise<Category[]> => {
+    return request('/api/categories');
   },
   createCategory: (input: CategoryCreateInput): Promise<Category> => {
     return request('/api/categories', {
@@ -175,8 +199,8 @@ export const api = {
       body: JSON.stringify(input),
     });
   },
-  deleteCategory: (id: string, ownerId: string): Promise<{ deleted: boolean }> => {
-    return request(`/api/categories/${encodeURIComponent(id)}?ownerId=${encodeURIComponent(ownerId)}`, {
+  deleteCategory: (id: string): Promise<{ deleted: boolean }> => {
+    return request(`/api/categories/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
   },
@@ -189,10 +213,9 @@ export const api = {
   getPublicShowcase: (id: string): Promise<ShowcasePublicView> => {
     return request(`/api/showcases/${encodeURIComponent(id)}/public`);
   },
-  cloneShowcase: (id: string, ownerId: string): Promise<Showcase> => {
+  cloneShowcase: (id: string): Promise<Showcase> => {
     return request(`/api/showcases/${encodeURIComponent(id)}/clone`, {
       method: 'POST',
-      body: JSON.stringify({ ownerId }),
     });
   },
   exportData: (): Promise<unknown> => {

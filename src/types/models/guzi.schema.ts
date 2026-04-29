@@ -10,6 +10,7 @@ export const GuziTypeSchema = z.string().min(1);
 
 export const GuziItemSchema = z.object({
   id: z.string().min(1),
+  ownerId: z.string().min(1).optional(),
   type: GuziTypeSchema,
   name: z.string().min(1),
   ip: z.string().min(1),

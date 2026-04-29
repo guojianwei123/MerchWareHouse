@@ -9,7 +9,6 @@ export const ShowcaseSharePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const loadShowcase = useRoomStore((state) => state.loadShowcase);
-  const ownerId = useRoomStore((state) => state.ownerId);
 
   const loadPublicView = async () => {
     setError(null);
@@ -27,7 +26,7 @@ export const ShowcaseSharePage: React.FC = () => {
     setNotice(null);
 
     try {
-      const cloned = await api.cloneShowcase(showcaseId, ownerId);
+      const cloned = await api.cloneShowcase(showcaseId);
       loadShowcase(cloned);
       setNotice(`已保存同款布局：${cloned.title}`);
     } catch (err) {

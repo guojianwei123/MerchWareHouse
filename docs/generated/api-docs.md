@@ -12,6 +12,23 @@
 { "data": null, "error": { "message": "错误信息" }, "code": "VALIDATION_ERROR" }
 ```
 
+受保护接口需要请求头：
+
+```text
+Authorization: Bearer <token>
+```
+
+## 认证
+
+- `POST /api/auth/miniapp/login`：微信/QQ/开发访客登录。
+  - Body: `{ "provider": "wechat", "code": "小程序登录 code", "profile": { "nickname": "昵称", "avatarUrl": "https://..." } }`
+  - `provider` 可为 `wechat`、`qq`，开发环境可用 `dev`。
+  - Return: `{ "token": "...", "user": { "id": "...", "provider": "wechat", "openId": "...", "nickname": "昵称", "avatarUrl": "https://..." } }`
+- `PATCH /api/auth/me`：更新当前用户头像昵称。
+  - Header: `Authorization: Bearer <token>`
+  - Body: `{ "nickname": "昵称", "avatarUrl": "https://..." }`
+  - Return: `User`
+
 ## 录入与上传
 
 - `POST /api/uploads/images`：上传 base64 图片。
@@ -38,11 +55,13 @@
 - `POST /api/items`：创建库存项，Body 必须匹配 `GuziUnionSchema`。
 - `PATCH /api/items/:id`：更新库存项，Body 必须匹配 `GuziUnionSchema`。
 - `DELETE /api/items/:id`：删除库存项。
+- 以上接口均按当前登录用户隔离。
 
 ## 资产与配件
 
 - `GET /api/assets/dashboard`：返回资产总览。
 - `GET /api/accessories/recommendations/:itemId`：返回指定谷子的配件推荐。
+- 以上接口均按当前登录用户隔离。
 
 ## 展示柜
 
@@ -50,6 +69,7 @@
 - `POST /api/showcases`：保存展示柜，Body 必须匹配 `ShowcaseSchema`。
 - `GET /api/showcases/:id/public`：读取公开只读分享视图。
 - `POST /api/showcases/:id/clone`：保存同款公开布局到当前用户。
+- 私有展示柜接口按当前登录用户隔离；公开分享页可匿名访问。
 
 ## 我的
 
@@ -57,3 +77,4 @@
 - `GET /api/reminders`：读取提醒设置。
 - `PUT /api/reminders`：保存提醒设置。
 - `POST /api/themes/generate`：根据主题词生成 CSS token 包。
+- 导出和提醒按当前登录用户隔离。

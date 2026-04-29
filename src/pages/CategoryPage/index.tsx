@@ -3,7 +3,6 @@ import {
   categoryToneOptions,
   fixedGuziCategories,
   isFixedGuziCategory,
-  LOCAL_OWNER_ID,
 } from '../../config/categories';
 import { api } from '../../service/api.service';
 import { useCategoryStore } from '../../store/categoryStore';
@@ -29,7 +28,7 @@ export const CategoryPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    api.listCategories(LOCAL_OWNER_ID)
+    api.listCategories()
       .then(setCategories)
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : '品类加载失败');
@@ -53,7 +52,7 @@ export const CategoryPage: React.FC = () => {
       .filter((type) => !isFixedGuziCategory(type) && !customNames.has(type))
       .map((type): Category => ({
         id: `inventory_${type}`,
-        ownerId: LOCAL_OWNER_ID,
+        ownerId: 'inventory-only',
         name: type,
         tone: inventoryOnlyCategoryTone,
       }));
@@ -73,7 +72,7 @@ export const CategoryPage: React.FC = () => {
     setIsSaving(true);
 
     try {
-      const category = await api.createCategory({ ownerId: LOCAL_OWNER_ID, name, tone: newTone });
+      const category = await api.createCategory({ name, tone: newTone });
       addCategory(category);
       setNewName('');
       setNotice(`已创建自定义品类：${category.name}`);
@@ -104,7 +103,7 @@ export const CategoryPage: React.FC = () => {
     setIsSaving(true);
 
     try {
-      const updated = await api.updateCategory(category.id, { ownerId: LOCAL_OWNER_ID, name });
+      const updated = await api.updateCategory(category.id, { name });
       updateCategory(updated);
       setEditingId(null);
       setEditingName('');
@@ -122,7 +121,7 @@ export const CategoryPage: React.FC = () => {
     setIsSaving(true);
 
     try {
-      await api.deleteCategory(category.id, LOCAL_OWNER_ID);
+      await api.deleteCategory(category.id);
       removeCategory(category.id);
       setNotice(`已删除自定义品类：${category.name}`);
     } catch (err) {

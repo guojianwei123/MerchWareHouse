@@ -18,26 +18,42 @@ const item = {
 describe('InventoryService', () => {
   it('creates, lists, updates, filters, and deletes inventory items', async () => {
     const service = new InventoryService(new GuziRepository());
+    const ownerId = 'user-1';
 
-    await service.createItem(item);
-    expect(await service.listItems()).toHaveLength(1);
-    expect(await service.listItems({ ip: 'Haikyu' })).toHaveLength(1);
-    expect(await service.listItems({ character: 'Kageyama' })).toHaveLength(0);
+    await service.createItem(ownerId, item);
+    expect(await service.listItems(ownerId)).toHaveLength(1);
+    expect(await service.listItems(ownerId, { ip: 'Haikyu' })).toHaveLength(1);
+    expect(await service.listItems(ownerId, { character: 'Kageyama' })).toHaveLength(0);
+    expect(await service.listItems('user-2')).toHaveLength(0);
 
-    const updated = await service.updateItem(item.id, {
+    const updated = await service.updateItem(ownerId, item.id, {
       ...item,
       marketPrice: 80,
     });
     expect(updated.marketPrice).toBe(80);
 
-    expect(await service.deleteItem(item.id)).toBe(true);
-    expect(await service.listItems()).toHaveLength(0);
+    expect(await service.deleteItem('user-2', item.id)).toBe(false);
+    expect(await service.deleteItem(ownerId, item.id)).toBe(true);
+    expect(await service.listItems(ownerId)).toHaveLength(0);
   });
 
   it('rejects invalid inventory data before saving', async () => {
     const service = new InventoryService(new GuziRepository());
 
-    await expect(service.createItem({ ...item, diameter: -1 })).rejects.toThrow();
-    expect(await service.listItems()).toHaveLength(0);
+    await expect(service.createItem('user-1', { ...item, diameter: -1 })).rejects.toThrow();
+    expect(await service.listItems('user-1')).toHaveLength(0);
+  });
+
+  it('blocks another owner from reusing an existing item id', async () => {
+    const service = new InventoryService(new GuziRepository());
+
+    await service.createItem('user-1', item);
+
+    await expect(service.createItem('user-2', {
+      ...item,
+      name: 'Badge Two',
+    })).rejects.toThrow('Guzi item already exists for another owner');
+    expect(await service.listItems('user-1')).toHaveLength(1);
+    expect(await service.listItems('user-2')).toHaveLength(0);
   });
 });

@@ -3,41 +3,55 @@ import { GuziUnionSchema } from '../types/models/guzi.schema';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 export interface GuziRepositoryPort {
-  saveItem: (item: GuziItem) => Promise<GuziItem>;
-  updateItem: (id: string, item: GuziItem) => Promise<GuziItem | null>;
-  deleteItem: (id: string) => Promise<boolean>;
-  findById: (id: string) => Promise<GuziItem | null>;
-  listItems: (filter?: GuziFilter) => Promise<GuziItem[]>;
+  saveItem: (ownerId: string, item: GuziItem) => Promise<GuziItem>;
+  updateItem: (ownerId: string, id: string, item: GuziItem) => Promise<GuziItem | null>;
+  deleteItem: (ownerId: string, id: string) => Promise<boolean>;
+  findById: (ownerId: string, id: string) => Promise<GuziItem | null>;
+  listItems: (ownerId: string, filter?: GuziFilter) => Promise<GuziItem[]>;
 }
 
 export class GuziRepository implements GuziRepositoryPort {
   private readonly items = new Map<string, GuziItem>();
 
-  async saveItem(item: GuziItem): Promise<GuziItem> {
-    this.items.set(item.id, item);
-    return item;
+  async saveItem(ownerId: string, item: GuziItem): Promise<GuziItem> {
+    const existing = this.items.get(item.id);
+
+    if (existing && existing.ownerId !== ownerId) {
+      throw new Error(`Guzi item already exists for another owner: ${item.id}`);
+    }
+
+    const saved = GuziUnionSchema.parse({ ...item, ownerId });
+    this.items.set(saved.id, saved);
+    return saved;
   }
 
-  async updateItem(id: string, item: GuziItem): Promise<GuziItem | null> {
-    if (!this.items.has(id)) {
+  async updateItem(ownerId: string, id: string, item: GuziItem): Promise<GuziItem | null> {
+    if (!(await this.findById(ownerId, id))) {
       return null;
     }
 
-    this.items.set(id, item);
-    return item;
+    return this.saveItem(ownerId, item);
   }
 
-  async deleteItem(id: string): Promise<boolean> {
+  async deleteItem(ownerId: string, id: string): Promise<boolean> {
+    const existing = await this.findById(ownerId, id);
+
+    if (!existing) {
+      return false;
+    }
+
     return this.items.delete(id);
   }
 
-  async findById(id: string): Promise<GuziItem | null> {
-    return this.items.get(id) ?? null;
+  async findById(ownerId: string, id: string): Promise<GuziItem | null> {
+    const item = this.items.get(id);
+    return item?.ownerId === ownerId ? item : null;
   }
 
-  async listItems(filter: GuziFilter = {}): Promise<GuziItem[]> {
+  async listItems(ownerId: string, filter: GuziFilter = {}): Promise<GuziItem[]> {
     return Array.from(this.items.values()).filter((item) => {
       return (
+        item.ownerId === ownerId &&
         (!filter.ip || item.ip === filter.ip) &&
         (!filter.character || item.character === filter.character) &&
         (!filter.series || item.series === filter.series) &&
@@ -96,11 +110,13 @@ const fromPersistedItem = (item: {
   purchasePrice: number | null;
   marketPrice: number | null;
   details: unknown;
+  ownerId: string;
 }): GuziItem => {
   const details = typeof item.details === 'object' && item.details !== null ? item.details : {};
 
   return GuziUnionSchema.parse({
     id: item.id,
+    ownerId: item.ownerId,
     name: item.name,
     type: item.type,
     ip: item.ip,
@@ -123,62 +139,73 @@ const toPersistedPrices = (item: GuziItem) => ({
 export class PrismaGuziRepository implements GuziRepositoryPort {
   constructor(private readonly prisma = new PrismaClient()) {}
 
-  async saveItem(item: GuziItem): Promise<GuziItem> {
-    const saved = await this.prisma.guziItem.upsert({
-      where: { id: item.id },
-      create: {
-        id: item.id,
-        name: item.name,
-        type: item.type,
-        ip: item.ip,
-        character: item.character,
-        series: item.series,
-        imageUrl: item.imageUrl,
-        ...toPersistedPrices(item),
-        details: toDetails(item),
-      },
-      update: {
-        name: item.name,
-        type: item.type,
-        ip: item.ip,
-        character: item.character,
-        series: item.series,
-        imageUrl: item.imageUrl,
-        ...toPersistedPrices(item),
-        details: toDetails(item),
-      },
-    });
+  async saveItem(ownerId: string, item: GuziItem): Promise<GuziItem> {
+    const existing = await this.prisma.guziItem.findUnique({ where: { id: item.id } });
+
+    if (existing && existing.ownerId !== ownerId) {
+      throw new Error(`Guzi item already exists for another owner: ${item.id}`);
+    }
+
+    const saved = existing
+      ? await this.prisma.guziItem.update({
+        where: { id: item.id },
+        data: {
+          name: item.name,
+          type: item.type,
+          ip: item.ip,
+          character: item.character,
+          series: item.series,
+          imageUrl: item.imageUrl,
+          ...toPersistedPrices(item),
+          details: toDetails(item),
+        },
+      })
+      : await this.prisma.guziItem.create({
+        data: {
+          id: item.id,
+          ownerId,
+          name: item.name,
+          type: item.type,
+          ip: item.ip,
+          character: item.character,
+          series: item.series,
+          imageUrl: item.imageUrl,
+          ...toPersistedPrices(item),
+          details: toDetails(item),
+        },
+      });
 
     return fromPersistedItem(saved);
   }
 
-  async updateItem(id: string, item: GuziItem): Promise<GuziItem | null> {
-    const existing = await this.findById(id);
+  async updateItem(ownerId: string, id: string, item: GuziItem): Promise<GuziItem | null> {
+    const existing = await this.findById(ownerId, id);
 
     if (!existing) {
       return null;
     }
 
-    return this.saveItem(item);
+    return this.saveItem(ownerId, item);
   }
 
-  async deleteItem(id: string): Promise<boolean> {
+  async deleteItem(ownerId: string, id: string): Promise<boolean> {
     try {
-      await this.prisma.guziItem.delete({ where: { id } });
-      return true;
+      const result = await this.prisma.guziItem.deleteMany({ where: { id, ownerId } });
+      return result.count > 0;
     } catch {
       return false;
     }
   }
 
-  async findById(id: string): Promise<GuziItem | null> {
-    const item = await this.prisma.guziItem.findUnique({ where: { id } });
+  async findById(ownerId: string, id: string): Promise<GuziItem | null> {
+    const item = await this.prisma.guziItem.findFirst({ where: { id, ownerId } });
     return item ? fromPersistedItem(item) : null;
   }
 
-  async listItems(filter: GuziFilter = {}): Promise<GuziItem[]> {
+  async listItems(ownerId: string, filter: GuziFilter = {}): Promise<GuziItem[]> {
     const items = await this.prisma.guziItem.findMany({
       where: {
+        ownerId,
         ip: filter.ip,
         character: filter.character,
         series: filter.series,

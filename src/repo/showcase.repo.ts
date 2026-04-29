@@ -3,7 +3,8 @@ import { PrismaClient } from '@prisma/client';
 
 export interface ShowcaseRepositoryPort {
   saveShowcase: (input: Showcase) => Promise<Showcase>;
-  findById: (id: string) => Promise<Showcase | null>;
+  findById: (ownerId: string, id: string) => Promise<Showcase | null>;
+  findAnyById: (id: string) => Promise<Showcase | null>;
   findPublicById: (id: string) => Promise<Showcase | null>;
 }
 
@@ -16,12 +17,17 @@ export class ShowcaseRepository implements ShowcaseRepositoryPort {
     return showcase;
   }
 
-  async findById(id: string): Promise<Showcase | null> {
+  async findById(ownerId: string, id: string): Promise<Showcase | null> {
+    const showcase = this.showcases.get(id);
+    return showcase?.ownerId === ownerId ? showcase : null;
+  }
+
+  async findAnyById(id: string): Promise<Showcase | null> {
     return this.showcases.get(id) ?? null;
   }
 
   async findPublicById(id: string): Promise<Showcase | null> {
-    const showcase = await this.findById(id);
+    const showcase = this.showcases.get(id) ?? null;
 
     if (!showcase?.isPublic) {
       return null;
@@ -70,7 +76,12 @@ export class PrismaShowcaseRepository implements ShowcaseRepositoryPort {
     return fromPersistedShowcase(saved);
   }
 
-  async findById(id: string): Promise<Showcase | null> {
+  async findById(ownerId: string, id: string): Promise<Showcase | null> {
+    const showcase = await this.prisma.showcase.findFirst({ where: { id, ownerId } });
+    return showcase ? fromPersistedShowcase(showcase) : null;
+  }
+
+  async findAnyById(id: string): Promise<Showcase | null> {
     const showcase = await this.prisma.showcase.findUnique({ where: { id } });
     return showcase ? fromPersistedShowcase(showcase) : null;
   }

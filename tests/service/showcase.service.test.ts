@@ -50,14 +50,32 @@ describe('ShowcaseService', () => {
   it('saves and reads showcase layouts', async () => {
     const service = new ShowcaseService(new ShowcaseRepository());
 
-    await service.saveShowcase(publicShowcase);
+    await service.saveShowcase('user-1', publicShowcase);
 
-    expect(await service.getShowcase('showcase-1')).toEqual(publicShowcase);
+    expect(await service.getShowcase('user-1', 'showcase-1')).toEqual(publicShowcase);
+    expect(await service.getShowcase('user-2', 'showcase-1')).toBeNull();
+  });
+
+  it('blocks another owner from overwriting an existing showcase id', async () => {
+    const service = new ShowcaseService(new ShowcaseRepository());
+    await service.saveShowcase('user-1', publicShowcase);
+
+    await expect(service.saveShowcase('user-2', {
+      ...publicShowcase,
+      title: 'Hijacked Shelf',
+      isPublic: false,
+    })).rejects.toMatchObject({
+      code: 'SHOWCASE_NOT_FOUND',
+      statusCode: 404,
+    });
+
+    expect(await service.getShowcase('user-1', 'showcase-1')).toEqual(publicShowcase);
+    expect(await service.getShowcase('user-2', 'showcase-1')).toBeNull();
   });
 
   it('returns public views with only safe item fields', async () => {
     const service = new ShowcaseService(new ShowcaseRepository());
-    await service.saveShowcase(publicShowcase);
+    await service.saveShowcase('user-1', publicShowcase);
 
     const view = await service.getPublicView('showcase-1', [guziItem]);
     const serialized = JSON.stringify(view);
@@ -78,7 +96,7 @@ describe('ShowcaseService', () => {
 
   it('blocks private showcases from public views', async () => {
     const service = new ShowcaseService(new ShowcaseRepository());
-    await service.saveShowcase({
+    await service.saveShowcase('user-1', {
       ...publicShowcase,
       id: 'private-showcase',
       isPublic: false,

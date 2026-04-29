@@ -5,11 +5,15 @@ import { CategoryRepository } from '../../src/repo/category.repo';
 import { GuziRepository } from '../../src/repo/guzi.repo';
 import { CategoryService } from '../../src/service/category.service';
 import { createApp } from '../../src/runtime/app';
+import { AuthService } from '../../src/service/auth.service';
+import { UserRepository } from '../../src/repo/user.repo';
 
 let server: Server;
 let baseUrl: string;
+let authHeader: string;
 const guziRepository = new GuziRepository();
 const categoryService = new CategoryService(new CategoryRepository(), guziRepository);
+const authService = new AuthService(new UserRepository());
 
 const requestJson = async (path: string, init?: RequestInit): Promise<Response> => {
   return fetch(`${baseUrl}${path}`, {
@@ -23,10 +27,16 @@ const requestJson = async (path: string, init?: RequestInit): Promise<Response> 
 
 describe('/api/categories', () => {
   beforeAll(async () => {
-    server = createApp({ categoryService }).listen(0);
+    server = createApp({ categoryService, authService }).listen(0);
     await new Promise<void>((resolve) => server.once('listening', resolve));
     const address = server.address() as AddressInfo;
     baseUrl = `http://127.0.0.1:${address.port}`;
+    const loginResponse = await requestJson('/api/auth/miniapp/login', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'dev', code: 'api-user' }),
+    });
+    const loginPayload = await loginResponse.json();
+    authHeader = `Bearer ${loginPayload.data.token}`;
   });
 
   afterAll(async () => {
@@ -38,14 +48,17 @@ describe('/api/categories', () => {
   it('creates and lists categories', async () => {
     const createResponse = await requestJson('/api/categories', {
       method: 'POST',
-      body: JSON.stringify({ ownerId: 'api-user', name: '票根', tone: 'blue' }),
+      headers: { Authorization: authHeader },
+      body: JSON.stringify({ name: '票根', tone: 'blue' }),
     });
     const created = await createResponse.json();
 
     expect(createResponse.status).toBe(201);
-    expect(created.data).toMatchObject({ ownerId: 'api-user', name: '票根', tone: 'blue' });
+    expect(created.data).toMatchObject({ name: '票根', tone: 'blue' });
 
-    const listResponse = await requestJson('/api/categories?ownerId=api-user');
+    const listResponse = await requestJson('/api/categories', {
+      headers: { Authorization: authHeader },
+    });
     const listed = await listResponse.json();
 
     expect(listResponse.status).toBe(200);
@@ -56,7 +69,8 @@ describe('/api/categories', () => {
   it('returns validation errors for empty category names', async () => {
     const response = await requestJson('/api/categories', {
       method: 'POST',
-      body: JSON.stringify({ ownerId: 'api-user', name: ' ', tone: 'pink' }),
+      headers: { Authorization: authHeader },
+      body: JSON.stringify({ name: ' ', tone: 'pink' }),
     });
     const payload = await response.json();
 
@@ -67,12 +81,14 @@ describe('/api/categories', () => {
   it('returns structured errors for duplicate names', async () => {
     await requestJson('/api/categories', {
       method: 'POST',
-      body: JSON.stringify({ ownerId: 'api-user', name: '吧唧袋', tone: 'blue' }),
+      headers: { Authorization: authHeader },
+      body: JSON.stringify({ name: '吧唧袋', tone: 'blue' }),
     });
 
     const response = await requestJson('/api/categories', {
       method: 'POST',
-      body: JSON.stringify({ ownerId: 'api-user', name: '吧唧袋', tone: 'gold' }),
+      headers: { Authorization: authHeader },
+      body: JSON.stringify({ name: '吧唧袋', tone: 'gold' }),
     });
     const payload = await response.json();
 
@@ -83,11 +99,12 @@ describe('/api/categories', () => {
   it('blocks deleting categories used by inventory items', async () => {
     const createResponse = await requestJson('/api/categories', {
       method: 'POST',
-      body: JSON.stringify({ ownerId: 'api-user', name: '明信片', tone: 'mint' }),
+      headers: { Authorization: authHeader },
+      body: JSON.stringify({ name: '明信片', tone: 'mint' }),
     });
     const created = await createResponse.json();
 
-    await guziRepository.saveItem({
+    await guziRepository.saveItem(created.data.ownerId, {
       id: 'postcard-1',
       name: 'Postcard',
       type: '明信片',
@@ -97,12 +114,21 @@ describe('/api/categories', () => {
       imageUrl: 'https://example.com/postcard.jpg',
     });
 
-    const response = await requestJson(`/api/categories/${encodeURIComponent(created.data.id)}?ownerId=api-user`, {
+    const response = await requestJson(`/api/categories/${encodeURIComponent(created.data.id)}`, {
       method: 'DELETE',
+      headers: { Authorization: authHeader },
     });
     const payload = await response.json();
 
     expect(response.status).toBe(409);
     expect(payload.code).toBe('CATEGORY_IN_USE');
+  });
+
+  it('requires authentication for protected category routes', async () => {
+    const response = await requestJson('/api/categories');
+    const payload = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(payload.code).toBe('AUTH_INVALID_TOKEN');
   });
 });

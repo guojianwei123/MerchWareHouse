@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { appLogger, type Logger } from '../../adapters/logging/logger';
+import { AuthServiceError } from '../../service/auth.service';
+import { ShowcaseServiceError } from '../../service/showcase.service';
 
 export const createErrorHandler = (logger: Logger = appLogger) => {
   return (err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -22,6 +24,38 @@ export const createErrorHandler = (logger: Logger = appLogger) => {
           details: err.errors,
         },
         code: 'VALIDATION_ERROR',
+      });
+    }
+
+    if (err instanceof AuthServiceError) {
+      logger.warn('Authentication request failed', {
+        module: 'http.error',
+        method: req.method,
+        path: req.originalUrl || req.url,
+        code: err.code,
+        message: err.message,
+      });
+
+      return res.status(err.statusCode).json({
+        data: null,
+        error: { message: err.message },
+        code: err.code,
+      });
+    }
+
+    if (err instanceof ShowcaseServiceError) {
+      logger.warn('Showcase request failed', {
+        module: 'http.error',
+        method: req.method,
+        path: req.originalUrl || req.url,
+        code: err.code,
+        message: err.message,
+      });
+
+      return res.status(err.statusCode).json({
+        data: null,
+        error: { message: err.message },
+        code: err.code,
       });
     }
 

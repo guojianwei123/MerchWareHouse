@@ -9,6 +9,7 @@ datasource db {
 
 model GuziItem {
   id            String        @id
+  ownerId       String
   name          String
   type          String
   ip            String
@@ -22,6 +23,20 @@ model GuziItem {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   priceRecords  PriceRecord[]
+
+  @@index([ownerId])
+}
+
+model User {
+  id        String   @id
+  provider  String
+  openId    String
+  nickname  String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, openId])
 }
 
 model Category {

@@ -8,16 +8,38 @@ import {
 import type { GuziItem } from '../types/models/guzi.schema';
 import { defaultShowcaseRepository, type ShowcaseRepositoryPort } from '../repo/showcase.repo';
 
+type ShowcaseServiceErrorCode = 'SHOWCASE_NOT_FOUND';
+
+export class ShowcaseServiceError extends Error {
+  constructor(
+    message: string,
+    readonly code: ShowcaseServiceErrorCode,
+    readonly statusCode: number,
+  ) {
+    super(message);
+  }
+}
+
 export class ShowcaseService {
   constructor(private readonly repository: ShowcaseRepositoryPort = defaultShowcaseRepository) {}
 
-  async saveShowcase(input: unknown): Promise<Showcase> {
-    const showcase = ShowcaseSchema.parse(input);
+  async saveShowcase(ownerId: string, input: unknown): Promise<Showcase> {
+    const showcase = ShowcaseSchema.parse({ ...(input as Record<string, unknown>), ownerId });
+    const existing = await this.repository.findAnyById(showcase.id);
+
+    if (existing && existing.ownerId !== ownerId) {
+      throw new ShowcaseServiceError('展示柜不存在。', 'SHOWCASE_NOT_FOUND', 404);
+    }
+
     return this.repository.saveShowcase(showcase);
   }
 
-  async getShowcase(id: string): Promise<Showcase | null> {
-    return this.repository.findById(id);
+  async getShowcase(ownerId: string, id: string): Promise<Showcase | null> {
+    return this.repository.findById(ownerId, id);
+  }
+
+  async getPublicShowcase(id: string): Promise<Showcase | null> {
+    return this.repository.findPublicById(id);
   }
 
   async getPublicView(showcaseId: string, items: GuziItem[]): Promise<ShowcasePublicView | null> {
@@ -61,10 +83,9 @@ export class ShowcaseService {
       return null;
     }
 
-    return this.saveShowcase({
+    return this.saveShowcase(ownerId, {
       ...showcase,
       id: `showcase_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      ownerId,
       title: `${showcase.title} 副本`,
       isPublic: false,
     });

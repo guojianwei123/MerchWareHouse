@@ -9,23 +9,23 @@ import {
 export class InventoryService {
   constructor(private readonly repository: GuziRepositoryPort = new GuziRepository()) {}
 
-  async createItem(input: unknown): Promise<GuziItem> {
+  async createItem(ownerId: string, input: unknown): Promise<GuziItem> {
     const item = GuziUnionSchema.parse(input);
-    return this.repository.saveItem(item);
+    return this.repository.saveItem(ownerId, item);
   }
 
-  async confirmDraft(input: unknown): Promise<GuziItem> {
-    return this.createItem(input);
+  async confirmDraft(ownerId: string, input: unknown): Promise<GuziItem> {
+    return this.createItem(ownerId, input);
   }
 
-  async updateItem(id: string, input: unknown): Promise<GuziItem> {
+  async updateItem(ownerId: string, id: string, input: unknown): Promise<GuziItem> {
     const item = GuziUnionSchema.parse(input);
 
     if (item.id !== id) {
       throw new Error('Item id does not match update target');
     }
 
-    const updated = await this.repository.updateItem(id, item);
+    const updated = await this.repository.updateItem(ownerId, id, item);
 
     if (!updated) {
       throw new Error(`Guzi item not found: ${id}`);
@@ -34,16 +34,16 @@ export class InventoryService {
     return updated;
   }
 
-  async deleteItem(id: string): Promise<boolean> {
-    return this.repository.deleteItem(id);
+  async deleteItem(ownerId: string, id: string): Promise<boolean> {
+    return this.repository.deleteItem(ownerId, id);
   }
 
-  async getItem(id: string): Promise<GuziItem | null> {
-    return this.repository.findById(id);
+  async getItem(ownerId: string, id: string): Promise<GuziItem | null> {
+    return this.repository.findById(ownerId, id);
   }
 
-  async listItems(filter: GuziFilter = {}): Promise<GuziItem[]> {
+  async listItems(ownerId: string, filter: GuziFilter = {}): Promise<GuziItem[]> {
     const parsedFilter = GuziFilterSchema.parse(filter);
-    return this.repository.listItems(parsedFilter);
+    return this.repository.listItems(ownerId, parsedFilter);
   }
 }

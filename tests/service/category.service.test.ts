@@ -56,13 +56,17 @@ describe('CategoryService', () => {
   it('blocks renaming and deleting categories used by inventory items', async () => {
     const { service, guziRepository } = createService();
     const category = await service.createCategory({ ownerId: 'user-1', name: '票根', tone: 'blue' });
-    await guziRepository.saveItem(customItem);
+    await guziRepository.saveItem('user-1', customItem);
 
     await expect(service.updateCategory(category.id, { ownerId: 'user-1', name: '挂件' })).rejects.toMatchObject({
       code: 'CATEGORY_IN_USE',
     });
     await expect(service.deleteCategory(category.id, 'user-1')).rejects.toMatchObject({
       code: 'CATEGORY_IN_USE',
+    });
+
+    await expect(service.deleteCategory(category.id, 'user-2')).rejects.toMatchObject({
+      code: 'CATEGORY_NOT_FOUND',
     });
   });
 });
