@@ -2,10 +2,13 @@ import express from 'express';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { AccessoryService } from '../service/accessory.service';
+import { AiAssistantService } from '../service/ai-assistant.service';
 import { calculateAssetDashboard } from '../service/asset-dashboard.service';
+import { CategoryService, CategoryServiceError } from '../service/category.service';
 import { IngestionService } from '../service/ingestion.service';
 import { InventoryService } from '../service/inventory.service';
 import { ShowcaseService } from '../service/showcase.service';
+import { PrismaCategoryRepository } from '../repo/category.repo';
 import { PrismaGuziRepository } from '../repo/guzi.repo';
 import { PrismaShowcaseRepository } from '../repo/showcase.repo';
 import { StorageAdapter } from '../adapters/oss/storage.adapter';
@@ -16,7 +19,9 @@ import { errorHandler } from './middlewares/error.middleware';
 import { requestLogger } from './middlewares/request-logger.middleware';
 
 const prisma = new PrismaClient();
-const inventoryService = new InventoryService(new PrismaGuziRepository(prisma));
+const guziRepository = new PrismaGuziRepository(prisma);
+const inventoryService = new InventoryService(guziRepository);
+const categoryService = new CategoryService(new PrismaCategoryRepository(prisma), guziRepository);
 const showcaseService = new ShowcaseService(new PrismaShowcaseRepository(prisma));
 const storageAdapter = new StorageAdapter();
 const accessoryService = new AccessoryService();
@@ -33,6 +38,10 @@ const imageUrlSchema = z.object({
   imageUrl: z.string().refine(isSupportedImageSource, {
     message: 'imageUrl must be a valid URL or image data URL',
   }),
+  categories: z.array(z.object({
+    value: z.string().trim().min(1).max(40),
+    label: z.string().trim().min(1).max(40),
+  })).optional().default([]),
 });
 
 const reminderSchema = z.object({
@@ -45,8 +54,22 @@ const themeGenerateSchema = z.object({
   subject: z.string().min(1).max(80),
 });
 
+const aiChatSchema = z.object({
+  message: z.string().trim().min(1).max(1000),
+  imageUrl: z.string().refine(isSupportedImageSource, {
+    message: 'imageUrl must be a valid URL or image data URL',
+  }).optional(),
+  categories: z.array(z.object({
+    value: z.string().trim().min(1).max(40),
+    label: z.string().trim().min(1).max(40),
+  })).optional().default([]),
+});
+
 const linkParseSchema = z.object({
   url: z.string().url(),
+});
+const categoryOwnerSchema = z.object({
+  ownerId: z.string().min(1).default('local-user'),
 });
 
 let reminderSettings: z.infer<typeof reminderSchema> | null = null;
@@ -56,6 +79,15 @@ const getIngestionService = (() => {
 
   return (): IngestionService => {
     service ??= new IngestionService();
+    return service;
+  };
+})();
+
+const getAiAssistantService = (() => {
+  let service: AiAssistantService | null = null;
+
+  return (): AiAssistantService => {
+    service ??= new AiAssistantService();
     return service;
   };
 })();
@@ -152,8 +184,21 @@ const fetchTextWithLimits = async (url: URL): Promise<string> => {
   return new TextDecoder().decode(Buffer.concat(chunks));
 };
 
-export const createApp = () => {
+const handleCategoryError = (error: unknown, res: express.Response, next: express.NextFunction) => {
+  if (error instanceof CategoryServiceError) {
+    return res.status(error.statusCode).json({
+      data: null,
+      error: { message: error.message },
+      code: error.code,
+    });
+  }
+
+  next(error);
+};
+
+export const createApp = (overrides: { categoryService?: CategoryService } = {}) => {
   const app = express();
+  const appCategoryService = overrides.categoryService ?? categoryService;
 
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN ?? '*');
@@ -203,7 +248,16 @@ export const createApp = () => {
   app.post('/api/ingestion/extract', async (req, res, next) => {
     try {
       const input = imageUrlSchema.parse(req.body);
-      res.json(ok(await getIngestionService().processScreenshot(input.imageUrl)));
+      res.json(ok(await getIngestionService().processScreenshot(input.imageUrl, input.categories)));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/ai/chat', async (req, res, next) => {
+    try {
+      const input = aiChatSchema.parse(req.body);
+      res.json(ok(await getAiAssistantService().chat(input)));
     } catch (error) {
       next(error);
     }
@@ -264,6 +318,40 @@ export const createApp = () => {
       res.json(ok({ deleted: await inventoryService.deleteItem(req.params.id) }));
     } catch (error) {
       next(error);
+    }
+  });
+
+  app.get('/api/categories', async (req, res, next) => {
+    try {
+      const { ownerId } = categoryOwnerSchema.parse(req.query);
+      res.json(ok(await appCategoryService.listCategories(ownerId)));
+    } catch (error) {
+      handleCategoryError(error, res, next);
+    }
+  });
+
+  app.post('/api/categories', async (req, res, next) => {
+    try {
+      res.status(201).json(ok(await appCategoryService.createCategory(req.body)));
+    } catch (error) {
+      handleCategoryError(error, res, next);
+    }
+  });
+
+  app.patch('/api/categories/:id', async (req, res, next) => {
+    try {
+      res.json(ok(await appCategoryService.updateCategory(req.params.id, req.body)));
+    } catch (error) {
+      handleCategoryError(error, res, next);
+    }
+  });
+
+  app.delete('/api/categories/:id', async (req, res, next) => {
+    try {
+      const { ownerId } = categoryOwnerSchema.parse(req.query);
+      res.json(ok({ deleted: await appCategoryService.deleteCategory(req.params.id, ownerId) }));
+    } catch (error) {
+      handleCategoryError(error, res, next);
     }
   });
 

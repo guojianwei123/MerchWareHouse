@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DynamicGuziForm } from '../../components/Forms/DynamicGuziForm';
 import { SecondaryPage } from '../../components/SecondaryPage';
+import { buildGuziCategoryContext } from '../../config/categories';
 import { api, fileToLocalImageInput } from '../../service/api.service';
+import { useCategoryStore } from '../../store/categoryStore';
 import { useInventoryStore } from '../../store/inventoryStore';
 import type { GuziItem } from '../../types/models/guzi.schema';
 import { LOCAL_IMAGE_ACCEPT } from '../../types/models/local-image.schema';
@@ -51,8 +53,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady, onSecondar
   const mainViewSnapshotRef = useRef<MainViewSnapshot | null>(null);
   const fileDialogPendingRef = useRef(false);
   const fileDialogRestoreCollapsedRef = useRef<boolean | null>(null);
+  const customCategories = useCategoryStore((state) => state.categories);
   const setDraftItem = useInventoryStore((state) => state.setDraftItem);
   const setDraftQueue = useInventoryStore((state) => state.setDraftQueue);
+  const categoryContext = useMemo(() => buildGuziCategoryContext(customCategories), [customCategories]);
 
   useEffect(() => {
     onSecondaryChange?.(view !== 'main');
@@ -115,7 +119,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady, onSecondar
 
     try {
       const image = await fileToLocalImageInput(file);
-      const drafts = await api.extractGuziDraftFromLocalImage(image);
+      const drafts = await api.extractGuziDraftFromLocalImage(image, categoryContext);
 
       if (drafts.length === 0) {
         throw new Error('未从 OCR 文本中识别到可入库谷子');
@@ -176,7 +180,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ onDraftReady, onSecondar
       BATCH_IMPORT_CONCURRENCY,
       async (file) => {
         const image = await fileToLocalImageInput(file);
-        return api.extractGuziDraftFromLocalImage(image);
+        return api.extractGuziDraftFromLocalImage(image, categoryContext);
       },
     );
 

@@ -1,4 +1,6 @@
 import type { GuziFilter, GuziItem } from '../types/models/guzi.schema';
+import type { GuziCategoryContext } from '../config/categories';
+import type { Category, CategoryTone } from '../types/models/category.schema';
 import {
   isSupportedImageDataUrl,
   isSupportedLocalImageType,
@@ -7,7 +9,15 @@ import {
 } from '../types/models/local-image.schema';
 import type { Showcase, ShowcasePublicView } from '../types/models/spatial.schema';
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
+const normalizeApiBaseUrl = (value?: string): string => {
+  if (!value) {
+    return '';
+  }
+
+  return value.replace(/\/$/, '');
+};
+
+const apiBaseUrl = import.meta.env.DEV ? '' : normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 interface ApiResponse<T> {
   data: T;
@@ -15,14 +25,43 @@ interface ApiResponse<T> {
   code: string;
 }
 
+interface AiChatInput {
+  message: string;
+  imageUrl?: string;
+  categories?: GuziCategoryContext[];
+}
+
+interface AiChatResponse {
+  reply: string;
+  drafts?: GuziItem[];
+}
+
+interface CategoryCreateInput {
+  ownerId: string;
+  name: string;
+  tone: CategoryTone;
+}
+
+interface CategoryUpdateInput {
+  ownerId: string;
+  name: string;
+}
+
 const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+  } catch {
+    throw new Error('无法连接到后端服务，请确认 API 服务已启动后重试。');
+  }
+
   const payload = (await response.json()) as ApiResponse<T>;
 
   if (!response.ok || payload.error) {
@@ -77,22 +116,28 @@ export const fileToLocalImageInput = (file: File): Promise<LocalImageInput> => {
 };
 
 export const api = {
-  extractGuziDraft: (imageUrl: string): Promise<GuziItem[]> => {
+  extractGuziDraft: (imageUrl: string, categories: GuziCategoryContext[] = []): Promise<GuziItem[]> => {
     return request('/api/ingestion/extract', {
       method: 'POST',
-      body: JSON.stringify({ imageUrl }),
+      body: JSON.stringify({ imageUrl, categories }),
     });
   },
-  extractGuziDraftFromLocalImage: (image: LocalImageInput): Promise<GuziItem[]> => {
+  extractGuziDraftFromLocalImage: (image: LocalImageInput, categories: GuziCategoryContext[] = []): Promise<GuziItem[]> => {
     return request('/api/ingestion/extract', {
       method: 'POST',
-      body: JSON.stringify({ imageUrl: image.dataUrl }),
+      body: JSON.stringify({ imageUrl: image.dataUrl, categories }),
     });
   },
   parseLink: (url: string): Promise<{ sourceUrl: string; title?: string; imageUrl?: string }> => {
     return request('/api/links/parse', {
       method: 'POST',
       body: JSON.stringify({ url }),
+    });
+  },
+  chatWithAi: (input: AiChatInput): Promise<AiChatResponse> => {
+    return request('/api/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify(input),
     });
   },
   listItems: (filter: GuziFilter = {}): Promise<GuziItem[]> => {
@@ -112,6 +157,26 @@ export const api = {
   },
   deleteItem: (id: string): Promise<{ deleted: boolean }> => {
     return request(`/api/items/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  },
+  listCategories: (ownerId: string): Promise<Category[]> => {
+    return request(`/api/categories?ownerId=${encodeURIComponent(ownerId)}`);
+  },
+  createCategory: (input: CategoryCreateInput): Promise<Category> => {
+    return request('/api/categories', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  },
+  updateCategory: (id: string, input: CategoryUpdateInput): Promise<Category> => {
+    return request(`/api/categories/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+  },
+  deleteCategory: (id: string, ownerId: string): Promise<{ deleted: boolean }> => {
+    return request(`/api/categories/${encodeURIComponent(id)}?ownerId=${encodeURIComponent(ownerId)}`, {
       method: 'DELETE',
     });
   },

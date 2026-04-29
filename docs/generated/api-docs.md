@@ -18,10 +18,19 @@
   - Body: `{ "fileBase64": "...", "originalName": "image.jpg", "contentType": "image/jpeg" }`
   - Return: `{ "imageUrl": "http://localhost:3000/uploads/..." }`
 - `POST /api/ingestion/extract`：从图片 URL 识别谷子草稿。
-  - Body: `{ "imageUrl": "https://..." }`
-  - Return: `GuziItem`
+  - Body: `{ "imageUrl": "https://...", "categories": [{ "value": "badge", "label": "吧唧" }] }`
+  - `categories` 可选，只包含固定品类和用户自定义品类；AI 返回的 `GuziItem.type` 必须匹配其中一个 `value`，无法判断时返回 `未知品类`。
+  - Return: `GuziItem[]`
 - `POST /api/links/parse`：解析商品链接的标题和候选图片。
   - Body: `{ "url": "https://..." }`
+
+## AI 助手
+
+- `POST /api/ai/chat`：谷子知识问答或图片识别对话。
+  - Body: `{ "message": "什么是吧唧？", "imageUrl": "data:image/png;base64,..." }`
+  - `message` 必填，`imageUrl` 可选。
+  - Return: `{ "reply": "中文回答", "drafts": [GuziItem] }`
+  - 仅文字问答不会返回 `drafts`；带图片时返回识别草稿摘要，不直接入库。
 
 ## 库存
 

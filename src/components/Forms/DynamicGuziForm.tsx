@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { GuziUnionSchema, type GuziItem, type GuziType } from '../../types/models/guzi.schema';
+import { GuziUnionSchema, type GuziItem } from '../../types/models/guzi.schema';
 import type { ZodIssue } from 'zod';
+import { fixedGuziCategories, getGuziCategoryLabel } from '../../config/categories';
+import { useCategoryStore } from '../../store/categoryStore';
+import { useInventoryStore } from '../../store/inventoryStore';
 
 type FormMode = 'create' | 'draft' | 'edit';
 
@@ -15,16 +18,6 @@ interface DynamicGuziFormProps {
 }
 
 export type GuziFormValues = Record<string, string>;
-
-const guziTypes: Array<{ value: GuziType; label: string }> = [
-  { value: 'badge', label: '吧唧' },
-  { value: 'paper_card', label: '纸片' },
-  { value: 'acrylic', label: '亚克力' },
-  { value: 'fabric', label: '布艺' },
-  { value: 'figure', label: '手办' },
-  { value: 'practical', label: '实用' },
-  { value: 'special', label: '特殊' },
-];
 
 const customTypeValue = '__custom__';
 
@@ -73,7 +66,9 @@ const fieldLabels: Record<string, string> = {
   description: '说明',
 };
 
-const isPresetGuziType = (type: string): boolean => guziTypes.some((option) => option.value === type);
+const isPresetGuziType = (type: string, options: Array<{ value: string }>): boolean => {
+  return options.some((option) => option.value === type);
+};
 
 const formatValidationIssue = (issue: ZodIssue | undefined): string => {
   if (!issue) {
@@ -258,9 +253,29 @@ export const DynamicGuziForm: React.FC<DynamicGuziFormProps> = ({
 }) => {
   const [internalValues, setInternalValues] = useState<GuziFormValues>(() => createGuziFormValues(initialData, sourceUrl));
   const [error, setError] = useState<string | null>(null);
+  const customCategories = useCategoryStore((state) => state.categories);
+  const addLocalCategoryName = useCategoryStore((state) => state.addLocalCategoryName);
+  const inventoryItems = useInventoryStore((state) => state.items);
   const values = controlledValues ?? internalValues;
   const selectedType = values.type;
-  const typeSelectValue = isPresetGuziType(selectedType) ? selectedType : customTypeValue;
+  const typeOptions = useMemo(() => {
+    const seen = new Set<string>();
+
+    return [
+      ...fixedGuziCategories.map((category) => ({ value: category.value, label: category.label })),
+      ...customCategories.map((category) => ({ value: category.name, label: category.name })),
+      ...inventoryItems.map((item) => ({ value: item.type, label: getGuziCategoryLabel(item.type) })),
+      ...(selectedType ? [{ value: selectedType, label: getGuziCategoryLabel(selectedType) }] : []),
+    ].filter((option) => {
+      if (seen.has(option.value)) {
+        return false;
+      }
+
+      seen.add(option.value);
+      return true;
+    });
+  }, [customCategories, inventoryItems, selectedType]);
+  const typeSelectValue = isPresetGuziType(selectedType, typeOptions) ? selectedType : customTypeValue;
   const isCustomType = typeSelectValue === customTypeValue;
 
   useEffect(() => {
@@ -306,6 +321,7 @@ export const DynamicGuziForm: React.FC<DynamicGuziFormProps> = ({
     }
 
     setError(null);
+    addLocalCategoryName(parsed.data.type);
     onSubmit(parsed.data);
   };
 
@@ -319,7 +335,7 @@ export const DynamicGuziForm: React.FC<DynamicGuziFormProps> = ({
       <label className="field-label">
         品类
         <select value={typeSelectValue} onChange={(event) => updateType(event.target.value)}>
-          {guziTypes.map((type) => (
+          {typeOptions.map((type) => (
             <option key={type.value} value={type.value}>
               {type.label}
             </option>

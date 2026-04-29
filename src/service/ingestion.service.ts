@@ -1,6 +1,7 @@
 import { createVisionAdapterFromEnv, type VisionAdapter } from '../adapters/llm/vision.adapter';
 import { appLogger, type Logger } from '../adapters/logging/logger';
-import { GUZI_EXTRACTION_PROMPT } from '../config/ai-prompts';
+import { buildGuziExtractionPrompt } from '../config/ai-prompts';
+import { UNKNOWN_GUIZI_CATEGORY, type GuziCategoryContext } from '../config/categories';
 import { isSupportedImageDataUrl } from '../types/models/local-image.schema';
 import { GuziUnionSchema, type GuziItem } from '../types/models/guzi.schema';
 import { z, ZodError, type ZodIssue } from 'zod';
@@ -36,30 +37,32 @@ export class IngestionService {
     private readonly logger: Logger = appLogger,
   ) {}
 
-  async processScreenshot(screenshotUrl: string): Promise<GuziItem[]> {
+  async processScreenshot(screenshotUrl: string, categories: GuziCategoryContext[] = []): Promise<GuziItem[]> {
     const imageUrl = this.parseImageUrl(screenshotUrl);
-    const extracted = await this.visionAdapter.extractGuziInfo(imageUrl, GUZI_EXTRACTION_PROMPT);
-    return this.createDraftItems(extracted, imageUrl);
+    const categoryContext = this.normalizeCategoryContext(categories);
+    const extracted = await this.visionAdapter.extractGuziInfo(imageUrl, buildGuziExtractionPrompt(categoryContext));
+    return this.createDraftItems(extracted, imageUrl, categoryContext);
   }
 
   async validateExtractedJson(data: unknown): Promise<GuziItem> {
     return GuziUnionSchema.parse(data);
   }
 
-  async createDraftItem(data: unknown, imageUrl?: string): Promise<GuziItem> {
+  async createDraftItem(data: unknown, imageUrl?: string, categories: GuziCategoryContext[] = []): Promise<GuziItem> {
     const parsed = this.parseAdapterOutput(data);
 
     if (!this.isRecord(parsed)) {
       throw new Error('AI extraction result must be an object');
     }
 
-    return this.validateExtractedJson(this.normalizeDraftItem(parsed, imageUrl));
+    return this.validateExtractedJson(this.normalizeDraftItem(parsed, imageUrl, this.normalizeCategoryContext(categories)));
   }
 
-  async createDraftItems(data: unknown, imageUrl?: string): Promise<GuziItem[]> {
+  async createDraftItems(data: unknown, imageUrl?: string, categories: GuziCategoryContext[] = []): Promise<GuziItem[]> {
     const parsed = this.parseAdapterOutput(data);
     const items = this.extractDraftItemCandidates(parsed);
     const failedItems = this.extractFailedDraftItemCandidates(parsed);
+    const categoryContext = this.normalizeCategoryContext(categories);
 
     if (items.length === 0 && failedItems.length === 0) {
       throw new ZodError([
@@ -107,7 +110,7 @@ export class IngestionService {
       }
 
       try {
-        drafts.push(await this.validateExtractedJson(this.normalizeDraftItem(item, imageUrl)));
+        drafts.push(await this.validateExtractedJson(this.normalizeDraftItem(item, imageUrl, categoryContext)));
       } catch (error) {
         const itemIssues = error instanceof ZodError
           ? error.errors.map((issue) => ({ ...issue, path: ['items', index, ...issue.path] }))
@@ -208,7 +211,11 @@ export class IngestionService {
     return this.isFailedDraftItem(data) ? [data] : [];
   }
 
-  private normalizeDraftItem(item: Record<string, unknown>, imageUrl?: string): Record<string, unknown> {
+  private normalizeDraftItem(
+    item: Record<string, unknown>,
+    imageUrl?: string,
+    categories: GuziCategoryContext[] = [],
+  ): Record<string, unknown> {
     const normalized = { ...item };
 
     for (const field of AI_OPTIONAL_DRAFT_FIELDS) {
@@ -219,10 +226,12 @@ export class IngestionService {
 
     const name = this.normalizeDraftName(item.name);
     const notes = this.normalizeDraftNotes(item.notes, name.needsManualReview);
+    const type = this.normalizeDraftType(item.type, categories);
 
     return {
       ...normalized,
       id: this.toOptionalString(item.id) ?? this.createDraftId(),
+      type,
       name: name.value,
       ip: this.toOptionalString(item.ip) ?? '未知IP',
       character: this.toOptionalString(item.character) ?? '未知角色',
@@ -240,6 +249,23 @@ export class IngestionService {
     }
 
     return { value: name, needsManualReview: false };
+  }
+
+  private normalizeDraftType(value: unknown, categories: GuziCategoryContext[]): string {
+    const type = this.toOptionalString(value);
+
+    if (categories.length === 0) {
+      return type ?? '';
+    }
+
+    if (!type || type === UNKNOWN_GUIZI_CATEGORY) {
+      return UNKNOWN_GUIZI_CATEGORY;
+    }
+
+    const trimmed = type.trim();
+    const matched = categories.find((category) => category.value === trimmed || category.label === trimmed);
+
+    return matched?.value ?? UNKNOWN_GUIZI_CATEGORY;
   }
 
   private normalizeDraftNotes(value: unknown, needsManualReview: boolean): string | undefined {
@@ -279,7 +305,33 @@ export class IngestionService {
   }
 
   private toOptionalString(value: unknown): string | undefined {
-    return typeof value === 'string' && value.length > 0 ? value : undefined;
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  private normalizeCategoryContext(categories: GuziCategoryContext[]): GuziCategoryContext[] {
+    const seen = new Set<string>();
+
+    return categories
+      .map((category) => {
+        const value = category.value.trim();
+        return {
+          value,
+          label: category.label.trim() || value,
+        };
+      })
+      .filter((category) => {
+        if (!category.value || seen.has(category.value)) {
+          return false;
+        }
+
+        seen.add(category.value);
+        return true;
+      });
   }
 
   private isBlankString(value: unknown): boolean {

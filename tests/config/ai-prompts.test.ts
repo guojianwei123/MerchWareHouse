@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GUZI_EXTRACTION_PROMPT } from '../../src/config/ai-prompts';
+import { buildGuziExtractionPrompt, GUZI_EXTRACTION_PROMPT } from '../../src/config/ai-prompts';
 
 describe('GUZI_EXTRACTION_PROMPT', () => {
   it('requires multi-item JSON output with non-empty fallback fields', () => {
@@ -23,5 +23,19 @@ describe('GUZI_EXTRACTION_PROMPT', () => {
   it('keeps named zero-price gifts while skipping unnamed gifts', () => {
     expect(GUZI_EXTRACTION_PROMPT).toContain('Include named gifts even when their visible price is 0.00');
     expect(GUZI_EXTRACTION_PROMPT).toContain('Skip unnamed gifts such as only "赠品 1件"');
+  });
+
+  it('adds available categories and requires type to match category values', () => {
+    const prompt = buildGuziExtractionPrompt([
+      { value: 'badge', label: '吧唧' },
+      { value: '票根', label: '票根' },
+    ]);
+
+    expect(prompt).toContain('Available categories:');
+    expect(prompt).toContain('value: "badge", label: "吧唧"');
+    expect(prompt).toContain('value: "票根", label: "票根"');
+    expect(prompt).toContain('type MUST be exactly one listed value');
+    expect(prompt).toContain('Return type as one of the listed values');
+    expect(prompt).toContain('return "未知品类"');
   });
 });

@@ -11,6 +11,17 @@ class StaticVisionAdapter implements VisionAdapter {
   }
 }
 
+class CapturingVisionAdapter implements VisionAdapter {
+  prompt = '';
+
+  constructor(private readonly output: unknown) {}
+
+  async extractGuziInfo(_imageUrl: string, prompt: string): Promise<unknown> {
+    this.prompt = prompt;
+    return this.output;
+  }
+}
+
 const createTestLogger = (): Logger => ({
   info: vi.fn(),
   warn: vi.fn(),
@@ -91,6 +102,52 @@ describe('IngestionService', () => {
 
     expect(drafts).toHaveLength(3);
     expect(drafts.map((draft) => draft.type)).toEqual(['badge', 'paper_card', 'fabric']);
+  });
+
+  it('adds available categories to the extraction prompt', async () => {
+    const adapter = new CapturingVisionAdapter(validBadge);
+    const service = new IngestionService(adapter);
+
+    await service.processScreenshot('https://example.com/order.jpg', [
+      { value: 'badge', label: '吧唧' },
+      { value: '票根', label: '票根' },
+    ]);
+
+    expect(adapter.prompt).toContain('Available categories:');
+    expect(adapter.prompt).toContain('value: "badge", label: "吧唧"');
+    expect(adapter.prompt).toContain('value: "票根", label: "票根"');
+  });
+
+  it('normalizes fixed category labels to category values', async () => {
+    const service = new IngestionService(new StaticVisionAdapter({ ...validBadge, type: '吧唧' }));
+
+    const [draft] = await service.processScreenshot('https://example.com/item.jpg', [
+      { value: 'badge', label: '吧唧' },
+    ]);
+
+    expect(draft.type).toBe('badge');
+  });
+
+  it('keeps user custom category names when they match available categories', async () => {
+    const service = new IngestionService(new StaticVisionAdapter({ ...validBadge, type: '票根' }));
+
+    const [draft] = await service.processScreenshot('https://example.com/item.jpg', [
+      { value: 'badge', label: '吧唧' },
+      { value: '票根', label: '票根' },
+    ]);
+
+    expect(draft.type).toBe('票根');
+  });
+
+  it('falls back to unknown category when AI returns a non-existing category', async () => {
+    const service = new IngestionService(new StaticVisionAdapter({ ...validBadge, type: '主题印象系列徽章' }));
+
+    const [draft] = await service.processScreenshot('https://example.com/item.jpg', [
+      { value: 'badge', label: '吧唧' },
+      { value: '票根', label: '票根' },
+    ]);
+
+    expect(draft.type).toBe('未知品类');
   });
 
   it('normalizes empty common fields before validation', async () => {

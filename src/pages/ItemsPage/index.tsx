@@ -1,30 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { DynamicGuziForm } from '../../components/Forms/DynamicGuziForm';
 import { SecondaryPage } from '../../components/SecondaryPage';
+import { fixedGuziCategories, getGuziCategoryLabel } from '../../config/categories';
 import { api } from '../../service/api.service';
+import { useCategoryStore } from '../../store/categoryStore';
 import { useInventoryStore } from '../../store/inventoryStore';
-import type { GuziItem, GuziType } from '../../types/models/guzi.schema';
-
-const categoryLabels: Record<GuziType, string> = {
-  paper_card: '纸片',
-  acrylic: '亚克力',
-  badge: '吧唧',
-  fabric: '布艺',
-  figure: '手办',
-  practical: '实用',
-  special: '特殊',
-};
-
-const filterOptions: Array<{ value: 'all' | GuziType; label: string }> = [
-  { value: 'all', label: '全部' },
-  { value: 'badge', label: '吧唧' },
-  { value: 'paper_card', label: '纸片' },
-  { value: 'acrylic', label: '亚克力' },
-  { value: 'fabric', label: '布艺' },
-  { value: 'figure', label: '手办' },
-  { value: 'practical', label: '实用' },
-  { value: 'special', label: '特殊' },
-];
+import type { GuziItem } from '../../types/models/guzi.schema';
 
 interface ItemsPageProps {
   onSecondaryChange?: (active: boolean) => void;
@@ -32,12 +13,13 @@ interface ItemsPageProps {
 
 export const ItemsPage: React.FC<ItemsPageProps> = ({ onSecondaryChange }) => {
   const [query, setQuery] = useState('');
-  const [activeType, setActiveType] = useState<'all' | GuziType>('all');
+  const [activeType, setActiveType] = useState<string>('all');
   const [editingItem, setEditingItem] = useState<GuziItem | null>(null);
   const items = useInventoryStore((state) => state.items);
   const setItems = useInventoryStore((state) => state.setItems);
   const updateItem = useInventoryStore((state) => state.updateItem);
   const removeItem = useInventoryStore((state) => state.removeItem);
+  const customCategories = useCategoryStore((state) => state.categories);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,6 +51,16 @@ export const ItemsPage: React.FC<ItemsPageProps> = ({ onSecondaryChange }) => {
       return matchesType && matchesKeyword;
     });
   }, [activeType, items, query]);
+
+  const filterOptions = useMemo(() => {
+    const options = new Map<string, string>();
+
+    fixedGuziCategories.forEach((category) => options.set(category.value, category.label));
+    customCategories.forEach((category) => options.set(category.name, category.name));
+    items.forEach((item) => options.set(item.type, getGuziCategoryLabel(item.type)));
+
+    return [{ value: 'all', label: '全部' }, ...Array.from(options, ([value, label]) => ({ value, label }))];
+  }, [customCategories, items]);
 
   const saveEdit = async (item: GuziItem) => {
     setError(null);
@@ -156,7 +148,7 @@ export const ItemsPage: React.FC<ItemsPageProps> = ({ onSecondaryChange }) => {
               </div>
               <h2>{item.name}</h2>
               <p>{item.ip} · {item.character}</p>
-              <small>{categoryLabels[item.type]}</small>
+              <small>{getGuziCategoryLabel(item.type)}</small>
               <div className="card-actions">
                 <button type="button" onClick={() => setEditingItem(item)}>
                   编辑

@@ -1,6 +1,29 @@
-import { UNKNOWN_GUIZI_CATEGORY, type GuziCategoryContext } from './categories';
+# AI Ingestion Prompt
 
-export const GUZI_EXTRACTION_PROMPT = `
+`src/config/ai-prompts.ts` is the source of truth. This document mirrors the current prompt and category-context contract so the prompt can be reviewed outside source code.
+
+## Category Context
+
+Image ingestion requests may include the user's available categories:
+
+```json
+{
+  "categories": [
+    { "value": "badge", "label": "吧唧" },
+    { "value": "paper_card", "label": "纸片" },
+    { "value": "票根", "label": "票根" }
+  ]
+}
+```
+
+- Fixed categories use the internal `type` as `value` and the Chinese display name as `label`.
+- User custom categories use the category name for both `value` and `label`.
+- Inventory-only historical categories are not included.
+- AI must return `type` as one listed `value`; if no category fits, return `未知品类`.
+
+## Prompt Backup
+
+```text
 You extract anime merchandise inventory data from OCR markdown and layout text.
 
 Return ONLY one valid JSON object. Do not output markdown, explanations, or reasoning.
@@ -46,32 +69,16 @@ Extract optional details when visible:
 - diameter, shape, length, width, height, material, scale, manufacturer, description, notes.
 - Omit optional fields when unknown or not visible. Do not output null, empty strings, or 0 for missing optional fields.
 - Output dimension fields only when the visible value is greater than 0.
-`;
 
-export const buildGuziExtractionPrompt = (categories: GuziCategoryContext[] = []): string => {
-  const seen = new Set<string>();
-  const categoryLines = categories
-    .map((category) => ({
-      value: category.value.trim(),
-      label: category.label.trim() || category.value.trim(),
-    }))
-    .filter((category) => {
-      if (!category.value || seen.has(category.value)) {
-        return false;
-      }
-
-      seen.add(category.value);
-      return true;
-    })
-    .map((category) => `- value: "${category.value}", label: "${category.label}"`);
-
-  if (categoryLines.length === 0) {
-    return GUZI_EXTRACTION_PROMPT;
-  }
-
-  return `${GUZI_EXTRACTION_PROMPT}
 Available categories:
-${categoryLines.join('\n')}
+- value: "badge", label: "吧唧"
+- value: "paper_card", label: "纸片"
+- value: "acrylic", label: "亚克力"
+- value: "figure", label: "手办"
+- value: "fabric", label: "布艺"
+- value: "practical", label: "实用"
+- value: "special", label: "特殊"
+- value: "<user custom category>", label: "<user custom category>"
 
-Return type as one of the listed values. If none fits, return "${UNKNOWN_GUIZI_CATEGORY}".`;
-};
+Return type as one of the listed values. If none fits, return "未知品类".
+```
