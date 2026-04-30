@@ -6,7 +6,7 @@
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "dev:all": "bash scripts/dev-all.sh",
+    "dev:all": "node scripts/dev-all.mjs",
     "build": "vite build",
     "api:dev": "tsx src/runtime/server.ts",
     "typecheck": "tsc --noEmit",
